@@ -35,92 +35,96 @@ function Navbar() {
 
 function Hero() {
   return (
-    <section className="relative pt-24 pb-32 overflow-hidden">
-      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=2034&auto=format&fit=crop')] bg-cover bg-center opacity-5"></div>
-      <div className="absolute inset-0 bg-gradient-to-b from-navy via-navy/95 to-navy"></div>
+    <section className="relative pt-24 pb-32 overflow-hidden bg-tech-grid">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background to-background"></div>
       
-      <div className="container relative mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
+      {/* Scanline effect */}
+      <div className="absolute inset-0 pointer-events-none w-full h-[5px] bg-digitech-red/10 blur-[2px] animate-scanline z-0"></div>
+
+      <div className="container relative z-10 mx-auto px-4 grid lg:grid-cols-2 gap-16 items-center">
         <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-digitech-red text-xs font-semibold uppercase tracking-wider mb-6">
-            <span className="flex h-2 w-2 rounded-full bg-digitech-red animate-pulse"></span>
-            Enterprise Health Monitoring
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm bg-red-500/10 border border-red-500/20 text-digitech-red text-xs font-mono uppercase tracking-wider mb-8 shadow-[0_0_10px_rgba(229,57,53,0.2)]">
+            <span className="flex h-2 w-2 rounded-full bg-digitech-red animate-pulse-fast"></span>
+            System Status: Active Monitoring
           </div>
-          <h1 className="text-5xl md:text-6xl font-extrabold text-white leading-tight mb-6 tracking-tight">
+          <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight mb-6 tracking-tight">
             Security Infrastructure <br />
-            <span className="text-gray-400">Telemetry & Health Monitoring.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-gray-600">Telemetry & Health.</span>
           </h1>
-          <p className="text-lg md:text-xl text-gray-400 mb-8 leading-relaxed">
-            Continuously monitor your entire security network 24x7. Digitech HMS automatically detects offline cameras, NVR storage failures, and switch latency, delivering root-cause diagnostics before an incident exposes a blind spot.
+          <p className="text-lg text-gray-400 mb-10 leading-relaxed font-light">
+            Continuous 24x7 monitoring for your entire security network. Digitech HMS automatically detects offline cameras, NVR storage failures, and network switch latency—delivering root-cause diagnostics before critical incidents occur.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
-            <button className="bg-digitech-red hover:bg-red-700 text-white px-8 py-4 rounded-md font-semibold flex items-center justify-center gap-2 transition-colors">
-              Request Demo <ArrowRight className="w-5 h-5" />
+            <button className="bg-digitech-red hover:bg-red-700 text-white px-8 py-4 rounded-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(229,57,53,0.3)]">
+              Request Platform Demo <ArrowRight className="w-5 h-5" />
             </button>
-            <button className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-8 py-4 rounded-md font-semibold flex items-center justify-center gap-2 transition-colors">
-              <PlayCircle className="w-5 h-5" /> See How It Works
+            <button className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-8 py-4 rounded-sm font-semibold flex items-center justify-center gap-2 transition-all">
+              <Activity className="w-5 h-5 text-gray-400" /> View Architecture
             </button>
           </div>
         </div>
 
         <div className="relative">
-          {/* Dashboard Preview Graphic */}
-          <div className="rounded-xl border border-white/10 bg-[#0c1322] shadow-2xl p-6 overflow-hidden relative">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-digitech-red/0 via-digitech-red to-digitech-red/0 opacity-50"></div>
-            
-            <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
-              <div>
-                <h3 className="text-white font-semibold">DIGITECH HMS</h3>
-                <p className="text-xs text-gray-500">Live Infrastructure Status</p>
+          {/* Advanced Technical Dashboard Graphic */}
+          <div className="rounded-md border border-white/10 bg-[#0A0F1A]/90 backdrop-blur-xl shadow-2xl overflow-hidden relative">
+            {/* Top Bar */}
+            <div className="flex justify-between items-center bg-[#111827] px-4 py-2 border-b border-white/5">
+              <div className="flex space-x-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
               </div>
-              <div className="text-right">
-                <h3 className="text-2xl font-bold text-emerald-400">98.7%</h3>
-                <p className="text-xs text-gray-500">Site Health Score</p>
-              </div>
+              <div className="text-xs text-gray-500 font-mono">digitech-hms-node-01</div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-8">
-              <div className="bg-white/5 rounded p-3 border border-white/5">
-                <div className="text-xs text-gray-400 mb-1">Cameras</div>
-                <div className="text-xl font-semibold text-white">1,248</div>
-                <div className="w-full bg-white/10 h-1.5 rounded mt-2"><div className="bg-emerald-500 h-1.5 rounded" style={{width: '99%'}}></div></div>
+            <div className="p-6">
+              <div className="flex justify-between items-end mb-6 border-b border-white/5 pb-4">
+                <div>
+                  <h3 className="text-white font-medium tracking-wide flex items-center gap-2">
+                    <Server className="w-4 h-4 text-digitech-red" />
+                    LIVE TELEMETRY
+                  </h3>
+                </div>
+                <div className="text-right">
+                  <h3 className="text-3xl font-mono text-emerald-400 shadow-emerald-400/20 drop-shadow-md">99.98%</h3>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-500 mt-1">Global SLA</p>
+                </div>
               </div>
-              <div className="bg-white/5 rounded p-3 border border-white/5">
-                <div className="text-xs text-gray-400 mb-1">NVRs</div>
-                <div className="text-xl font-semibold text-white">42</div>
-                <div className="w-full bg-white/10 h-1.5 rounded mt-2"><div className="bg-emerald-500 h-1.5 rounded" style={{width: '97%'}}></div></div>
-              </div>
-              <div className="bg-white/5 rounded p-3 border border-white/5">
-                <div className="text-xs text-gray-400 mb-1">Switches</div>
-                <div className="text-xl font-semibold text-white">76</div>
-                <div className="w-full bg-white/10 h-1.5 rounded mt-2"><div className="bg-emerald-500 h-1.5 rounded" style={{width: '99%'}}></div></div>
-              </div>
-            </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-red-400 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Active Incidents (3)</span>
-              </div>
-              
-              <div className="bg-red-500/10 border border-red-500/20 rounded p-3 flex justify-between items-start">
-                <div>
-                  <div className="text-red-400 text-sm font-medium">Recording Stopped</div>
-                  <div className="text-xs text-gray-400">Camera CAM-023 • NVR-04</div>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-[#111827] rounded-sm p-3 border border-white/5 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-500/10 rounded-bl-full"></div>
+                  <div className="text-[10px] uppercase text-gray-500 mb-1">Endpoints</div>
+                  <div className="text-xl font-mono text-white">1,248</div>
+                  <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1"><ArrowRight className="w-3 h-3 -rotate-45" /> 100% Online</div>
                 </div>
-                <div className="text-xs text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" /> 02:17 PM</div>
-              </div>
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-3 flex justify-between items-start">
-                <div>
-                  <div className="text-yellow-400 text-sm font-medium">Network Latency High</div>
-                  <div className="text-xs text-gray-400">Switch SW-East-02</div>
+                <div className="bg-[#111827] rounded-sm p-3 border border-white/5 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-500/10 rounded-bl-full"></div>
+                  <div className="text-[10px] uppercase text-gray-500 mb-1">NVR Storage</div>
+                  <div className="text-xl font-mono text-white">42 TB</div>
+                  <div className="w-full bg-white/5 h-1 rounded-full mt-2"><div className="bg-emerald-500 h-1 rounded-full" style={{width: '78%'}}></div></div>
                 </div>
-                <div className="text-xs text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" /> 01:45 PM</div>
+                <div className="bg-[#111827] rounded-sm p-3 border border-digitech-red/30 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-8 h-8 bg-digitech-red/20 rounded-bl-full"></div>
+                  <div className="text-[10px] uppercase text-gray-500 mb-1">Network Switch</div>
+                  <div className="text-xl font-mono text-white">14 ms</div>
+                  <div className="text-[10px] text-digitech-red mt-1 flex items-center gap-1 animate-pulse"><AlertTriangle className="w-3 h-3" /> Latency Spike</div>
+                </div>
+              </div>
+
+              {/* Terminal Logs */}
+              <div className="bg-black/50 border border-white/5 rounded-sm p-3 font-mono text-[10px] leading-relaxed">
+                <div className="text-gray-500 mb-2 border-b border-white/5 pb-1">System Logs - tail -f /var/log/hms/diagnostic.log</div>
+                <div className="text-emerald-400">[2026-09-10 14:22:01] INFO: Ping CAM-West-045 OK (2ms)</div>
+                <div className="text-emerald-400">[2026-09-10 14:22:02] INFO: NVR-02 Disk Write OK (450MB/s)</div>
+                <div className="text-yellow-400">[2026-09-10 14:22:05] WARN: Switch-East-01 High Traffic Detected</div>
+                <div className="text-emerald-400">[2026-09-10 14:22:06] INFO: Ping CAM-East-012 OK (3ms)</div>
+                <div className="text-digitech-red mt-1">[2026-09-10 14:22:10] CRIT: Connection lost to CAM-South-099</div>
+                <div className="text-gray-400">[2026-09-10 14:22:10] Executing automated root-cause diagnostic...</div>
+                <div className="text-blue-400">[2026-09-10 14:22:11] RESULT: PoE Switch Port 4 Down. Dispatching alert.</div>
               </div>
             </div>
             
-            {/* Overlay network lines effect */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20" aria-hidden="true">
-               <path d="M 0 50 Q 150 50 150 150 T 300 150" fill="none" stroke="#E53935" strokeWidth="2" className="animate-dash" strokeDasharray="10 10" />
-            </svg>
           </div>
         </div>
       </div>
