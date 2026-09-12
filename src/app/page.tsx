@@ -1,16 +1,28 @@
+"use client";
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, Activity, MonitorPlay, Network, Server, HardDrive, ShieldCheck, CheckCircle2, ArrowRight, Video,
   Zap, Lock, PlayCircle, BarChart3, AlertTriangle, Clock, MapPin, Building2, Briefcase, GraduationCap, Hospital,
-  Home, Landmark, WifiOff
+  Home, Landmark, WifiOff, Moon, Sun
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 function Navbar() {
+  const [isLight, setIsLight] = useState(false);
+
+  useEffect(() => {
+    if (isLight) {
+      document.documentElement.classList.add('light-theme');
+    } else {
+      document.documentElement.classList.remove('light-theme');
+    }
+  }, [isLight]);
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-navy/80 backdrop-blur-md">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 keep-colors">
           <img src="https://digitechhms.net/static/img/digitech-logo-light.png" alt="Digitech HMS" className="h-8 w-auto" />
         </div>
         <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
@@ -18,15 +30,22 @@ function Navbar() {
           <a href="#features" className="hover:text-white transition-colors">Features</a>
           <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
           <a href="#industries" className="hover:text-white transition-colors">Industries</a>
-          <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+          <a href="#waitlist" className="hover:text-white transition-colors">Waitlist</a>
         </div>
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsLight(!isLight)} 
+            className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            title="Toggle Light/Dark Mode"
+          >
+            {isLight ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+          </button>
           <button className="hidden md:block text-sm font-medium text-white hover:text-gray-300 transition-colors">
             Login
           </button>
-          <button className="bg-digitech-red hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+          <a href="#waitlist" className="bg-digitech-red hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
             Request Demo
-          </button>
+          </a>
         </div>
       </div>
     </nav>
@@ -55,76 +74,24 @@ function Hero() {
             Continuous 24x7 monitoring for your entire security network. Digitech HMS automatically detects offline cameras, NVR storage failures, and network switch latency—delivering root-cause diagnostics before critical incidents occur.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
-            <button className="bg-digitech-red hover:bg-red-700 text-white px-8 py-4 rounded-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(229,57,53,0.3)]">
+            <a href="#waitlist" className="bg-digitech-red hover:bg-red-700 text-white px-8 py-4 rounded-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(229,57,53,0.3)]">
               Request Platform Demo <ArrowRight className="w-5 h-5" />
-            </button>
-            <button className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-8 py-4 rounded-sm font-semibold flex items-center justify-center gap-2 transition-all">
+            </a>
+            <a href="#waitlist" className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-8 py-4 rounded-sm font-semibold flex items-center justify-center gap-2 transition-all">
               <Activity className="w-5 h-5 text-gray-400" /> View Architecture
-            </button>
+            </a>
           </div>
         </div>
 
         <div className="relative">
-          {/* Advanced Technical Dashboard Graphic */}
-          <div className="rounded-md border border-white/10 bg-[#0A0F1A]/90 backdrop-blur-xl shadow-2xl overflow-hidden relative">
-            {/* Top Bar */}
-            <div className="flex justify-between items-center bg-[#111827] px-4 py-2 border-b border-white/5">
-              <div className="flex space-x-2">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              </div>
-              <div className="text-xs text-gray-500 font-mono">digitech-hms-node-01</div>
-            </div>
-
-            <div className="p-6">
-              <div className="flex justify-between items-end mb-6 border-b border-white/5 pb-4">
-                <div>
-                  <h3 className="text-white font-medium tracking-wide flex items-center gap-2">
-                    <Server className="w-4 h-4 text-digitech-red" />
-                    LIVE TELEMETRY
-                  </h3>
-                </div>
-                <div className="text-right">
-                  <h3 className="text-3xl font-mono text-emerald-400 shadow-emerald-400/20 drop-shadow-md">99.98%</h3>
-                  <p className="text-[10px] uppercase tracking-widest text-gray-500 mt-1">Global SLA</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="bg-[#111827] rounded-sm p-3 border border-white/5 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-500/10 rounded-bl-full"></div>
-                  <div className="text-[10px] uppercase text-gray-500 mb-1">Endpoints</div>
-                  <div className="text-xl font-mono text-white">1,248</div>
-                  <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1"><ArrowRight className="w-3 h-3 -rotate-45" /> 100% Online</div>
-                </div>
-                <div className="bg-[#111827] rounded-sm p-3 border border-white/5 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-500/10 rounded-bl-full"></div>
-                  <div className="text-[10px] uppercase text-gray-500 mb-1">NVR Storage</div>
-                  <div className="text-xl font-mono text-white">42 TB</div>
-                  <div className="w-full bg-white/5 h-1 rounded-full mt-2"><div className="bg-emerald-500 h-1 rounded-full" style={{width: '78%'}}></div></div>
-                </div>
-                <div className="bg-[#111827] rounded-sm p-3 border border-digitech-red/30 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-8 h-8 bg-digitech-red/20 rounded-bl-full"></div>
-                  <div className="text-[10px] uppercase text-gray-500 mb-1">Network Switch</div>
-                  <div className="text-xl font-mono text-white">14 ms</div>
-                  <div className="text-[10px] text-digitech-red mt-1 flex items-center gap-1 animate-pulse"><AlertTriangle className="w-3 h-3" /> Latency Spike</div>
-                </div>
-              </div>
-
-              {/* Terminal Logs */}
-              <div className="bg-black/50 border border-white/5 rounded-sm p-3 font-mono text-[10px] leading-relaxed">
-                <div className="text-gray-500 mb-2 border-b border-white/5 pb-1">System Logs - tail -f /var/log/hms/diagnostic.log</div>
-                <div className="text-emerald-400">[2026-09-10 14:22:01] INFO: Ping CAM-West-045 OK (2ms)</div>
-                <div className="text-emerald-400">[2026-09-10 14:22:02] INFO: NVR-02 Disk Write OK (450MB/s)</div>
-                <div className="text-yellow-400">[2026-09-10 14:22:05] WARN: Switch-East-01 High Traffic Detected</div>
-                <div className="text-emerald-400">[2026-09-10 14:22:06] INFO: Ping CAM-East-012 OK (3ms)</div>
-                <div className="text-digitech-red mt-1">[2026-09-10 14:22:10] CRIT: Connection lost to CAM-South-099</div>
-                <div className="text-gray-400">[2026-09-10 14:22:10] Executing automated root-cause diagnostic...</div>
-                <div className="text-blue-400">[2026-09-10 14:22:11] RESULT: PoE Switch Port 4 Down. Dispatching alert.</div>
-              </div>
-            </div>
-            
+          {/* Old Dashboard Image */}
+          <div className="rounded-md border border-white/10 shadow-2xl overflow-hidden relative group">
+            <div className="absolute inset-0 bg-digitech-red/20 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none"></div>
+            <img 
+              src="https://digitechhms.net/static/img/shot-dashboard.webp" 
+              alt="The DHMS dashboard: 17 monitored devices, 13 up, 3 down, 3 open incidents" 
+              className="w-full h-auto transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
+            />
           </div>
         </div>
       </div>
@@ -563,70 +530,99 @@ function PrivacyROI() {
   );
 }
 
-function PricingCTA() {
+function WaitlistCTA() {
   return (
-    <section className="py-24 bg-charcoal" id="pricing">
+    <section id="waitlist" className="py-24 bg-[#0A0F1A] border-t border-white/5 relative overflow-hidden">
       <div className="container mx-auto px-4">
-        
-        {/* Supported Brands */}
-        <div className="mb-24 text-center border-b border-white/5 pb-16">
-          <h3 className="text-xl font-medium text-white mb-8">Works with the security equipment you already have</h3>
-          <div className="flex flex-wrap justify-center gap-8 text-gray-400 font-medium">
-            <span>Hikvision</span>
-            <span>•</span>
-            <span>Dahua</span>
-            <span>•</span>
-            <span>CP PLUS</span>
-            <span>•</span>
-            <span>Axis</span>
-            <span>•</span>
-            <span>Honeywell</span>
-            <span>•</span>
-            <span>Bosch</span>
-            <span>•</span>
-            <span>Uniview</span>
-          </div>
-        </div>
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-16 tracking-tight">
+            Join the <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-gray-600">DHMS</span> waitlist
+          </h2>
 
-        {/* Pricing */}
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Plans designed for every deployment</h2>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-24">
-          {[
-            { name: "Essential", desc: "For smaller sites" },
-            { name: "Professional", desc: "For commercial sites" },
-            { name: "Enterprise", desc: "For multi-site deployments" },
-            { name: "Managed HMS", desc: "HMS + Digitech AMC + on-site support", highlighted: true }
-          ].map((plan, i) => (
-            <div key={i} className={cn("p-6 rounded-xl border flex flex-col justify-between", plan.highlighted ? "border-digitech-red bg-digitech-red/5 relative" : "border-white/10 bg-navy")}>
-              {plan.highlighted && <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-digitech-red text-white text-xs font-bold px-3 py-1 rounded-full">RECOMMENDED</div>}
-              <div>
-                <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-gray-400 text-sm mb-8">{plan.desc}</p>
+          <div className="grid md:grid-cols-3 gap-12">
+            <form className="md:col-span-2 space-y-6" id="wl-form" noValidate>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="wl-name" className="block text-sm font-medium text-gray-400 mb-2">Your name *</label>
+                  <input id="wl-name" name="name" type="text" maxLength={120} autoComplete="name" required placeholder="Rajesh Kumar" className="w-full bg-[#111827] border border-white/10 rounded px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors" />
+                </div>
+                <div>
+                  <label htmlFor="wl-phone" className="block text-sm font-medium text-gray-400 mb-2">Phone number *</label>
+                  <input id="wl-phone" name="phone" type="tel" maxLength={20} autoComplete="tel" required placeholder="98765 43210" className="w-full bg-[#111827] border border-white/10 rounded px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors" />
+                </div>
               </div>
-              <button className={cn("w-full py-2 rounded font-medium transition-colors", plan.highlighted ? "bg-digitech-red text-white hover:bg-red-700" : "bg-white/10 text-white hover:bg-white/20")}>
-                Request Pricing
-              </button>
-            </div>
-          ))}
-        </div>
 
-        {/* Assessment CTA */}
-        <div className="bg-gradient-to-r from-navy to-charcoal border border-white/10 rounded-2xl p-8 md:p-12 text-center max-w-4xl mx-auto shadow-2xl">
-          <h2 className="text-3xl font-bold text-white mb-4">How healthy is your CCTV system?</h2>
-          <p className="text-gray-400 mb-8 max-w-2xl mx-auto">Let Digitech HMS check your existing security infrastructure with a Free Site Health Assessment.</p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <button className="bg-white text-navy px-8 py-4 rounded-md font-bold hover:bg-gray-200 transition-colors">
-              Get A Site Health Assessment
-            </button>
-            <button className="bg-digitech-red text-white px-8 py-4 rounded-md font-bold hover:bg-red-700 transition-colors">
-              Request A Demo
-            </button>
+              <div>
+                <label htmlFor="wl-org" className="block text-sm font-medium text-gray-400 mb-2">Business or organisation *</label>
+                <input id="wl-org" name="organisation" type="text" maxLength={160} autoComplete="organization" required placeholder="Sunrise Public School" className="w-full bg-[#111827] border border-white/10 rounded px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors" />
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="wl-city" className="block text-sm font-medium text-gray-400 mb-2">City</label>
+                  <input id="wl-city" name="city" type="text" maxLength={80} autoComplete="address-level2" placeholder="New Delhi" className="w-full bg-[#111827] border border-white/10 rounded px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors" />
+                </div>
+                <div>
+                  <label htmlFor="wl-email" className="block text-sm font-medium text-gray-400 mb-2">Email (optional)</label>
+                  <input id="wl-email" name="email" type="email" maxLength={200} autoComplete="email" placeholder="you@company.com" className="w-full bg-[#111827] border border-white/10 rounded px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors" />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="wl-sites" className="block text-sm font-medium text-gray-400 mb-2">Number of locations</label>
+                  <select id="wl-sites" name="site_count" className="w-full bg-[#111827] border border-white/10 rounded px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors">
+                    <option value="1">1 location</option>
+                    <option value="2">2 &ndash; 4 locations</option>
+                    <option value="5">5 &ndash; 10 locations</option>
+                    <option value="11">11+ locations</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="wl-plan" className="block text-sm font-medium text-gray-400 mb-2">Which plan interests you</label>
+                  <select id="wl-plan" name="plan_interest" defaultValue="yearly" className="w-full bg-[#111827] border border-white/10 rounded px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors">
+                    <option value="yearly">Yearly &mdash; ₹22,999 per site</option>
+                    <option value="quarterly">Quarterly &mdash; ₹6,749 per site</option>
+                    <option value="monthly">Monthly &mdash; ₹2,499 per site</option>
+                    <option value="custom">Custom &mdash; five sites or more</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="wl-message" className="block text-sm font-medium text-gray-400 mb-2">Anything you would like us to know</label>
+                <textarea id="wl-message" name="message" rows={3} maxLength={1000} placeholder="We have 40 cameras across two floors and a Hikvision recorder." className="w-full bg-[#111827] border border-white/10 rounded px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors"></textarea>
+              </div>
+
+              <div className="hidden" aria-hidden="true">
+                <label htmlFor="wl-website">Leave this field empty</label>
+                <input id="wl-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+              </div>
+
+              <button className="bg-white hover:bg-gray-200 text-black px-8 py-4 rounded-sm font-semibold transition-colors mt-4" type="submit" id="wl-submit">
+                Join the waitlist
+              </button>
+
+              <p className="text-gray-500 text-sm mt-4">
+                We will only use these details to contact you about DHMS. No marketing lists, and we do not pass anything to third parties.
+              </p>
+            </form>
+
+            <aside className="md:pl-8 border-l border-white/5 space-y-8">
+              <p className="text-gray-400 leading-relaxed">
+                We are onboarding new sites in batches so that every installation gets proper attention. Leave your details and we will call you to walk through your setup and what it would cost — no obligation, and no automated sales calls.
+              </p>
+              <div>
+                <p className="text-sm font-mono text-gray-500 uppercase tracking-widest mb-2">Or simply call us</p>
+                <a className="text-2xl font-bold text-white hover:text-digitech-red transition-colors" href="tel:+919999760222">+91 9999 760 222</a>
+              </div>
+              <div>
+                <p className="text-sm font-mono text-gray-500 uppercase tracking-widest mb-2">Email</p>
+                <a className="text-xl font-bold text-white hover:text-digitech-red transition-colors break-all" href="mailto:info@digitechservices.net">info@digitechservices.net</a>
+              </div>
+            </aside>
           </div>
         </div>
-
       </div>
     </section>
   );
@@ -647,12 +643,12 @@ function Footer() {
           </div>
           <div>
             <h4 className="text-white font-medium mb-4">Product</h4>
-            <ul className="space-y-2 text-sm text-gray-500">
-              <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">How it works</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Industries</a></li>
-            </ul>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">How it works</a></li>
+                <li><a href="#waitlist" className="hover:text-white transition-colors">Waitlist</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Industries</a></li>
+              </ul>
           </div>
           <div>
             <h4 className="text-white font-medium mb-4">Company</h4>
@@ -685,7 +681,7 @@ export default function Page() {
       <Industries />
       <AmcIntegration />
       <PrivacyROI />
-      <PricingCTA />
+      <WaitlistCTA />
       <Footer />
     </main>
   );
