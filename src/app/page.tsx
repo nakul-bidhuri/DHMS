@@ -60,20 +60,20 @@ function Hero() {
       {/* Scanline effect */}
       <div className="absolute inset-0 pointer-events-none w-full h-[5px] bg-digitech-red/10 blur-[2px] animate-scanline z-0"></div>
 
-      <div className="container relative z-10 mx-auto px-4 grid lg:grid-cols-2 gap-16 items-center">
-        <div className="max-w-2xl">
+      <div className="container relative z-10 mx-auto px-4 flex flex-col items-center text-center">
+        <div className="max-w-4xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm bg-red-500/10 border border-red-500/20 text-digitech-red text-xs font-mono uppercase tracking-wider mb-8 shadow-[0_0_10px_rgba(229,57,53,0.2)]">
             <span className="flex h-2 w-2 rounded-full bg-digitech-red animate-pulse-fast"></span>
             System Status: Active Monitoring
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight mb-6 tracking-tight">
+          <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight mb-6 tracking-tight">
             Security Infrastructure <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-gray-600">Telemetry & Health.</span>
           </h1>
-          <p className="text-lg text-gray-400 mb-10 leading-relaxed font-light">
+          <p className="text-xl text-gray-400 mb-10 leading-relaxed font-light max-w-3xl mx-auto">
             Continuous 24x7 monitoring for your entire security network. Digitech HMS automatically detects offline cameras, NVR storage failures, and network switch latency—delivering root-cause diagnostics before critical incidents occur.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a href="#waitlist" className="bg-digitech-red hover:bg-red-700 text-white px-8 py-4 rounded-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(229,57,53,0.3)]">
               Request Platform Demo <ArrowRight className="w-5 h-5" />
             </a>
@@ -83,14 +83,14 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative">
-          {/* Old Dashboard Image */}
-          <div className="rounded-md border border-white/10 shadow-2xl overflow-hidden relative group">
+        <div className="w-full max-w-7xl mx-auto relative mt-4">
+          {/* Old Dashboard Image - Now Full Width */}
+          <div className="rounded-xl border border-white/10 shadow-2xl overflow-hidden relative group bg-[#050B14]">
             <div className="absolute inset-0 bg-digitech-red/20 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none"></div>
             <img 
               src="https://digitechhms.net/static/img/shot-dashboard.webp" 
               alt="The DHMS dashboard: 17 monitored devices, 13 up, 3 down, 3 open incidents" 
-              className="w-full h-auto transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
+              className="w-full h-auto object-cover"
             />
           </div>
         </div>
