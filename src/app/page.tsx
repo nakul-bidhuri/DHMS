@@ -20,31 +20,32 @@ function Navbar() {
   }, [isLight]);
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-navy/80 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 w-full border-b border-emerald-500/20 bg-[#020617]/90 backdrop-blur-md">
+      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2 keep-colors">
           <img src="https://digitechhms.net/static/img/digitech-logo-light.png" alt="Digitech HMS" className="h-8 w-auto" />
         </div>
-        <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
-          <a href="#product" className="hover:text-white transition-colors">Product</a>
-          <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
-          <a href="#industries" className="hover:text-white transition-colors">Industries</a>
-          <a href="#waitlist" className="hover:text-white transition-colors">Waitlist</a>
+        <div className="hidden md:flex items-center gap-8 text-xs font-mono uppercase tracking-widest text-gray-400">
+          <a href="#product" className="hover:text-emerald-400 transition-colors">Product</a>
+          <a href="#features" className="hover:text-emerald-400 transition-colors">Features</a>
+          <a href="#how-it-works" className="hover:text-emerald-400 transition-colors">Workflow</a>
+          <a href="#industries" className="hover:text-emerald-400 transition-colors">Sectors</a>
+          <a href="#waitlist" className="hover:text-emerald-400 transition-colors">Waitlist</a>
         </div>
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsLight(!isLight)} 
-            className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            className="p-2 rounded-sm border border-white/5 hover:border-emerald-500/50 bg-white/5 hover:bg-emerald-500/10 text-gray-400 hover:text-emerald-400 transition-all"
             title="Toggle Light/Dark Mode"
           >
-            {isLight ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
-          <button className="hidden md:block text-sm font-medium text-white hover:text-gray-300 transition-colors">
+          <button className="hidden md:block text-xs font-mono tracking-widest uppercase text-white hover:text-emerald-400 transition-colors">
             Login
           </button>
-          <a href="#waitlist" className="bg-digitech-red hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-            Request Demo
+          <a href="#waitlist" className="bg-emerald-500 hover:bg-emerald-400 text-[#020617] px-4 py-2 rounded-sm text-xs font-bold font-mono tracking-widest transition-colors shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+            DEMO_REQ
           </a>
         </div>
       </div>
@@ -54,43 +55,44 @@ function Navbar() {
 
 function Hero() {
   return (
-    <section className="relative pt-24 pb-32 overflow-hidden bg-tech-grid">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background to-background"></div>
+    <section className="relative pt-24 pb-32 overflow-hidden bg-[#020617] bg-cyber-dots">
+      <div className="glow-orb w-[800px] h-[800px] bg-emerald-500/10 top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#020617]/80 to-[#020617]"></div>
       
       {/* Scanline effect */}
-      <div className="absolute inset-0 pointer-events-none w-full h-[5px] bg-digitech-red/10 blur-[2px] animate-scanline z-0"></div>
+      <div className="absolute inset-0 pointer-events-none w-full h-[3px] bg-emerald-500/10 blur-[1px] animate-scanline z-0"></div>
 
       <div className="container relative z-10 mx-auto px-4 flex flex-col items-center text-center">
         <div className="max-w-4xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm bg-red-500/10 border border-red-500/20 text-digitech-red text-xs font-mono uppercase tracking-wider mb-8 shadow-[0_0_10px_rgba(229,57,53,0.2)]">
-            <span className="flex h-2 w-2 rounded-full bg-digitech-red animate-pulse-fast"></span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono uppercase tracking-widest mb-8 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse-fast"></span>
             System Status: Active Monitoring
           </div>
           <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight mb-6 tracking-tight">
             Security Infrastructure <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-gray-600">Telemetry & Health.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 font-mono tracking-tighter">Telemetry & Health.</span>
           </h1>
-          <p className="text-xl text-gray-400 mb-10 leading-relaxed font-light max-w-3xl mx-auto">
-            Continuous 24x7 monitoring for your entire security network. Digitech HMS automatically detects offline cameras, NVR storage failures, and network switch latency—delivering root-cause diagnostics before critical incidents occur.
+          <p className="text-xl text-gray-400 mb-10 leading-relaxed font-mono max-w-3xl mx-auto">
+            > Continuous 24x7 monitoring for your entire security network. Digitech HMS automatically detects offline cameras, NVR storage failures, and network switch latency—delivering root-cause diagnostics before critical incidents occur.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a href="#waitlist" className="bg-digitech-red hover:bg-red-700 text-white px-8 py-4 rounded-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(229,57,53,0.3)]">
-              Request Platform Demo <ArrowRight className="w-5 h-5" />
+            <a href="#waitlist" className="bg-emerald-500 hover:bg-emerald-400 text-[#020617] px-8 py-4 rounded-sm font-bold font-mono tracking-widest flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+              [ REQUEST_PLATFORM_DEMO ] <ArrowRight className="w-5 h-5" />
             </a>
-            <a href="#waitlist" className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-8 py-4 rounded-sm font-semibold flex items-center justify-center gap-2 transition-all">
-              <Activity className="w-5 h-5 text-gray-400" /> View Architecture
+            <a href="#waitlist" className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-8 py-4 rounded-sm font-mono tracking-widest flex items-center justify-center gap-2 transition-all">
+              <Activity className="w-5 h-5 text-gray-400" /> VIEW_ARCHITECTURE
             </a>
           </div>
         </div>
 
         <div className="w-full max-w-7xl mx-auto relative mt-4">
           {/* Old Dashboard Image - Now Full Width */}
-          <div className="rounded-xl border border-white/10 shadow-2xl overflow-hidden relative group bg-[#050B14]">
-            <div className="absolute inset-0 bg-digitech-red/20 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none"></div>
+          <div className="rounded-sm border border-emerald-500/20 shadow-[0_0_50px_rgba(16,185,129,0.15)] overflow-hidden relative group bg-[#020617] p-1">
+            <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10 pointer-events-none mix-blend-overlay"></div>
             <img 
               src="https://digitechhms.net/static/img/shot-dashboard.webp" 
               alt="The DHMS dashboard: 17 monitored devices, 13 up, 3 down, 3 open incidents" 
-              className="w-full h-auto object-cover"
+              className="w-full h-auto object-cover rounded-sm border border-white/5 opacity-90 group-hover:opacity-100 transition-opacity"
             />
           </div>
         </div>
@@ -101,7 +103,7 @@ function Hero() {
 
 function ProblemSolution() {
   return (
-    <section className="py-24 bg-[#050B14] bg-tech-grid relative border-b border-white/10" id="product">
+    <section className="py-24 bg-[#020617] bg-tech-grid relative border-b border-white/10" id="product">
       <div className="absolute inset-0 bg-gradient-to-b from-background via-background/90 to-background/50"></div>
       <div className="container relative z-10 mx-auto px-4">
         <div className="text-center max-w-3xl mx-auto mb-16">
@@ -121,7 +123,7 @@ function ProblemSolution() {
             { title: "Network Failure", id: "ERR_NET_03", icon: WifiOff, color: "text-red-400" },
             { title: "Power Failure", id: "ERR_PWR_04", icon: Zap, color: "text-red-400" },
           ].map((item, i) => (
-            <div key={i} className="bg-[#0A0F1A]/80 backdrop-blur-sm border border-red-500/20 p-6 rounded-sm text-left flex flex-col group hover:border-red-500/60 transition-colors relative overflow-hidden shadow-[0_0_20px_rgba(229,57,53,0.05)] hover:shadow-[0_0_30px_rgba(229,57,53,0.15)]">
+            <div key={i} className="bg-[#050914]/80 backdrop-blur-sm border border-red-500/20 p-6 rounded-sm text-left flex flex-col group hover:border-red-500/60 transition-colors relative overflow-hidden shadow-[0_0_20px_rgba(229,57,53,0.05)] hover:shadow-[0_0_30px_rgba(229,57,53,0.15)]">
               <div className="absolute top-0 right-0 p-2 text-[10px] text-red-500/50 font-mono group-hover:text-red-500 transition-colors">{item.id}</div>
               <div className="w-10 h-10 bg-red-500/10 rounded-sm border border-red-500/20 flex items-center justify-center mb-6 group-hover:bg-red-500/20 transition-colors">
                 <item.icon className={cn("w-5 h-5", item.color)} />
@@ -143,66 +145,83 @@ function WhatWeMonitor() {
     {
       title: "CCTV Cameras",
       icon: Video,
-      items: ["Online / Offline status", "Stream availability", "IP changes", "Device health", "Connectivity"]
+      items: ["Online / Offline status", "Stream availability", "IP changes", "Device health", "Connectivity"],
+      accent: "from-blue-500/20 to-transparent",
+      borderColor: "group-hover:border-blue-500/50"
     },
     {
       title: "NVR / DVR",
       icon: Server,
-      items: ["NVR availability", "Recording status", "HDD health", "Storage capacity", "Channel status"]
+      items: ["NVR availability", "Recording status", "HDD health", "Storage capacity", "Channel status"],
+      accent: "from-emerald-500/20 to-transparent",
+      borderColor: "group-hover:border-emerald-500/50"
     },
     {
       title: "Network",
       icon: Network,
-      items: ["Managed switches", "Port status", "Uptime", "Network connectivity", "SNMP monitoring"]
+      items: ["Managed switches", "Port status", "Uptime", "Network connectivity", "SNMP monitoring"],
+      accent: "from-purple-500/20 to-transparent",
+      borderColor: "group-hover:border-purple-500/50"
     },
     {
       title: "Recording",
       icon: HardDrive,
-      items: ["Recording continuity", "Recording failure", "Missing footage", "Channel-wise status"]
+      items: ["Recording continuity", "Recording failure", "Missing footage", "Channel-wise status"],
+      accent: "from-amber-500/20 to-transparent",
+      borderColor: "group-hover:border-amber-500/50"
     },
     {
       title: "Power & Connectivity",
       icon: Zap,
-      items: ["Network outage", "Site outage", "Device recovery", "Persistent failures"]
+      items: ["Network outage", "Site outage", "Device recovery", "Persistent failures"],
+      accent: "from-red-500/20 to-transparent",
+      borderColor: "group-hover:border-red-500/50"
     },
     {
       title: "Site Health",
       icon: Activity,
-      items: ["Overall site score", "Availability", "Incidents", "Downtime", "SLA performance"]
+      items: ["Overall site score", "Availability", "Incidents", "Downtime", "SLA performance"],
+      accent: "from-cyan-500/20 to-transparent",
+      borderColor: "group-hover:border-cyan-500/50"
     }
   ];
 
   return (
-    <section className="py-24 bg-[#0A0F1A] bg-tech-grid relative border-b border-white/10" id="features">
+    <section className="py-24 bg-[#020617] bg-cyber-dots relative border-b border-white/5" id="features">
+      <div className="glow-orb w-[600px] h-[600px] bg-blue-500/10 top-0 left-0 -translate-x-1/2 -translate-y-1/2"></div>
+      <div className="glow-orb w-[400px] h-[400px] bg-emerald-500/5 bottom-0 right-0 translate-x-1/4 translate-y-1/4"></div>
+      
       <div className="container mx-auto px-4 relative z-10">
         <div className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-8">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 text-emerald-400 text-[10px] font-mono uppercase tracking-widest mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-mono uppercase tracking-widest mb-4">
               <Activity className="w-3 h-3" /> [ DIAGNOSTIC_COVERAGE ]
             </div>
             <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">What does Digitech HMS monitor?</h2>
             <p className="text-gray-400 text-lg font-mono">> Complete visibility across every layer of your security infrastructure.</p>
           </div>
-          <div className="text-right hidden md:block">
+          <div className="text-right hidden md:block border border-white/10 bg-white/5 p-4 rounded-sm">
             <div className="text-[10px] text-gray-500 font-mono mb-1">SCAN_RATE</div>
-            <div className="text-2xl font-mono text-emerald-400">1000/sec</div>
+            <div className="text-2xl font-mono text-blue-400 animate-pulse">1000/sec</div>
           </div>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {monitors.map((module, i) => (
-            <div key={i} className="bg-[#111827]/90 backdrop-blur-md border border-white/10 rounded-sm p-8 hover:border-emerald-500/30 transition-all relative overflow-hidden group shadow-lg">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-white/5 rounded-bl-full -z-10 group-hover:bg-emerald-500/10 transition-colors"></div>
+            <div key={i} className={`bg-[#050914]/80 backdrop-blur-xl border border-white/5 rounded-sm p-8 transition-all relative overflow-hidden group shadow-[0_0_15px_rgba(0,0,0,0.5)] ${module.borderColor}`}>
+              <div className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10 ${module.accent}`}></div>
+              <div className="absolute top-0 left-0 w-1 h-full bg-white/10 group-hover:bg-white/40 transition-colors"></div>
+              
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-sm flex items-center justify-center text-emerald-400">
+                <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-sm flex items-center justify-center text-gray-300 group-hover:text-white transition-colors">
                   <module.icon className="w-5 h-5" />
                 </div>
                 <h3 className="text-lg font-mono uppercase text-white tracking-wide">{module.title}</h3>
               </div>
               <ul className="space-y-3">
                 {module.items.map((item, j) => (
-                  <li key={j} className="flex items-center gap-3 text-gray-400 text-sm font-mono">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                  <li key={j} className="flex items-center gap-3 text-gray-500 group-hover:text-gray-300 text-sm font-mono transition-colors">
+                    <CheckCircle2 className="w-3 h-3 opacity-50 shrink-0" />
                     {item}
                   </li>
                 ))}
@@ -226,10 +245,11 @@ function HowItWorks() {
   ];
 
   return (
-    <section className="py-24 bg-[#050B14] bg-tech-grid relative overflow-hidden" id="how-it-works">
+    <section className="py-24 bg-[#020617] bg-cyber-dots relative overflow-hidden" id="how-it-works">
+      <div className="glow-orb w-[800px] h-[800px] bg-indigo-500/5 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 text-gray-400 text-[10px] font-mono uppercase tracking-widest mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-mono uppercase tracking-widest mb-6">
             <Lock className="w-3 h-3" /> [ WORKFLOW_PROTOCOL ]
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">Why Digitech HMS?</h2>
@@ -238,12 +258,12 @@ function HowItWorks() {
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {steps.map((step, i) => (
-            <div key={i} className="relative p-6 bg-[#0A0F1A]/80 backdrop-blur-md rounded-sm border border-white/10 text-center hover:border-emerald-500/50 transition-colors group">
-              <div className="text-emerald-500/50 font-mono text-xs mb-3 group-hover:text-emerald-400 transition-colors">STEP_{step.num}</div>
+            <div key={i} className="relative p-6 bg-[#050914]/90 backdrop-blur-xl rounded-sm border border-white/5 text-center hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all group shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(99,102,241,0.15)]">
+              <div className="text-indigo-500/50 font-mono text-xs mb-3 group-hover:text-indigo-400 transition-colors">STEP_{step.num}</div>
               <h4 className="text-white font-mono uppercase text-sm tracking-wide mb-2">{step.title}</h4>
-              <p className="text-xs text-gray-500 font-mono">{step.desc}</p>
+              <p className="text-xs text-gray-500 font-mono group-hover:text-gray-400 transition-colors">{step.desc}</p>
               {i < steps.length - 1 && (
-                <div className="hidden lg:block absolute top-1/2 -right-3 w-6 h-px bg-white/10 group-hover:bg-emerald-500/50 transition-colors"></div>
+                <div className="hidden lg:block absolute top-1/2 -right-3 w-6 h-px bg-white/10 group-hover:bg-indigo-500/50 transition-colors z-20"></div>
               )}
             </div>
           ))}
@@ -255,7 +275,7 @@ function HowItWorks() {
 
 function BeforeAfter() {
   return (
-    <section className="py-24 bg-[#0A0F1A] border-y border-white/10">
+    <section className="py-24 bg-[#050914] border-y border-white/10">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 text-digitech-red text-[10px] font-mono uppercase tracking-widest mb-6">
@@ -346,7 +366,7 @@ function BeforeAfter() {
 
 function MultiSite() {
   return (
-    <section className="py-24 bg-[#050B14] bg-tech-grid border-y border-white/10 overflow-hidden relative">
+    <section className="py-24 bg-[#020617] bg-tech-grid border-y border-white/10 overflow-hidden relative">
       <div className="absolute inset-0 pointer-events-none w-full h-[3px] bg-emerald-500/10 blur-[1px] animate-scanline z-0"></div>
       <div className="container relative z-10 mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -373,7 +393,7 @@ function MultiSite() {
           </div>
           <div className="relative p-8 lg:p-12">
             <div className="absolute inset-0 bg-blue-500/5 blur-3xl rounded-full"></div>
-            <div className="relative bg-[#0A0F1A]/90 backdrop-blur-md border border-blue-500/20 rounded-sm p-6 font-mono shadow-[0_0_30px_rgba(59,130,246,0.1)]">
+            <div className="relative bg-[#050914]/90 backdrop-blur-md border border-blue-500/20 rounded-sm p-6 font-mono shadow-[0_0_30px_rgba(59,130,246,0.1)]">
               
               <div className="flex justify-between items-start mb-6 border-b border-white/10 pb-4">
                 <div>
@@ -440,7 +460,7 @@ function Industries() {
   ];
 
   return (
-    <section className="py-24 bg-[#0A0F1A] bg-tech-grid relative border-b border-white/10" id="industries">
+    <section className="py-24 bg-[#050914] bg-tech-grid relative border-b border-white/10" id="industries">
       <div className="container relative z-10 mx-auto px-4">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 text-emerald-400 text-[10px] font-mono uppercase tracking-widest mb-6">
@@ -469,9 +489,9 @@ function Industries() {
 
 function AmcIntegration() {
   return (
-    <section className="py-24 bg-[#050B14] bg-tech-grid relative overflow-hidden">
+    <section className="py-24 bg-[#020617] bg-tech-grid relative overflow-hidden">
       <div className="container relative z-10 mx-auto px-4">
-        <div className="bg-[#0A0F1A]/80 backdrop-blur-xl border border-digitech-red/30 rounded-sm p-8 md:p-12 shadow-[0_0_40px_rgba(229,57,53,0.05)]">
+        <div className="bg-[#050914]/80 backdrop-blur-xl border border-digitech-red/30 rounded-sm p-8 md:p-12 shadow-[0_0_40px_rgba(229,57,53,0.05)]">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-red-500/10 border border-red-500/20 text-digitech-red text-[10px] font-mono uppercase tracking-widest mb-6">
@@ -492,7 +512,7 @@ function AmcIntegration() {
                 </div>
               </div>
             </div>
-            <div className="bg-[#050B14] border border-white/10 rounded-sm p-6 relative font-mono">
+            <div className="bg-[#020617] border border-white/10 rounded-sm p-6 relative font-mono">
               <div className="absolute top-0 right-0 w-4 h-4 border-b border-l border-white/20"></div>
               <div className="absolute bottom-0 left-0 w-4 h-4 border-t border-r border-white/20"></div>
               
@@ -532,7 +552,7 @@ function AmcIntegration() {
 
 function PrivacyROI() {
   return (
-    <section className="py-24 bg-[#0A0F1A] border-t border-white/10">
+    <section className="py-24 bg-[#050914] border-t border-white/10">
       <div className="container mx-auto px-4">
         {/* Security & Privacy Banner */}
         <div className="bg-[#111827] border border-white/10 rounded-sm p-8 mb-24 text-center max-w-4xl mx-auto relative overflow-hidden">
@@ -593,7 +613,7 @@ function PrivacyROI() {
         </div>
     function WaitlistCTA() {
   return (
-    <section id="waitlist" className="py-24 bg-[#0A0F1A] border-t border-white/5 relative overflow-hidden bg-tech-grid">
+    <section id="waitlist" className="py-24 bg-[#050914] border-t border-white/5 relative overflow-hidden bg-tech-grid">
       <div className="container relative z-10 mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono uppercase tracking-widest mb-6">
@@ -694,7 +714,7 @@ function PrivacyROI() {
 
 function Footer() {
   return (
-    <footer className="bg-[#050B14] py-12 border-t border-white/10">
+    <footer className="bg-[#020617] py-12 border-t border-white/10">
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div className="col-span-1 md:col-span-2">
@@ -734,7 +754,7 @@ function Footer() {
 
 export default function Page() {
   return (
-    <main className="min-h-screen bg-navy selection:bg-digitech-red selection:text-white">
+    <main className="min-h-screen bg-[#020617] selection:bg-digitech-red selection:text-white">
       <Navbar />
       <Hero />
       <ProblemSolution />
