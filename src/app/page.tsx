@@ -73,7 +73,7 @@ function Hero() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 font-mono tracking-tighter">Telemetry & Health.</span>
           </h1>
           <p className="text-xl text-gray-400 mb-10 leading-relaxed font-mono max-w-3xl mx-auto">
-            > Continuous 24x7 monitoring for your entire security network. Digitech HMS automatically detects offline cameras, NVR storage failures, and network switch latency—delivering root-cause diagnostics before critical incidents occur.
+            &gt; Continuous 24x7 monitoring for your entire security network. Digitech HMS automatically detects offline cameras, NVR storage failures, and network switch latency—delivering root-cause diagnostics before critical incidents occur.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a href="#waitlist" className="bg-emerald-500 hover:bg-emerald-400 text-[#020617] px-8 py-4 rounded-sm font-bold font-mono tracking-widest flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -112,7 +112,7 @@ function ProblemSolution() {
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">Your cameras are installed. <br/><span className="text-digitech-red">But are they working?</span></h2>
           <p className="text-gray-400 text-lg font-mono">
-            > A single point of failure can compromise your entire security posture. You often only find out when you need the footage most.
+            &gt; A single point of failure can compromise your entire security posture. You often only find out when you need the footage most.
           </p>
         </div>
 
@@ -198,7 +198,7 @@ function WhatWeMonitor() {
               <Activity className="w-3 h-3" /> [ DIAGNOSTIC_COVERAGE ]
             </div>
             <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">What does Digitech HMS monitor?</h2>
-            <p className="text-gray-400 text-lg font-mono">> Complete visibility across every layer of your security infrastructure.</p>
+            <p className="text-gray-400 text-lg font-mono">&gt; Complete visibility across every layer of your security infrastructure.</p>
           </div>
           <div className="text-right hidden md:block border border-white/10 bg-white/5 p-4 rounded-sm">
             <div className="text-[10px] text-gray-500 font-mono mb-1">SCAN_RATE</div>
@@ -253,7 +253,7 @@ function HowItWorks() {
             <Lock className="w-3 h-3" /> [ WORKFLOW_PROTOCOL ]
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">Why Digitech HMS?</h2>
-          <p className="text-gray-400 text-lg font-mono">> From detection to resolution — Digitech HMS gives you the complete picture.</p>
+          <p className="text-gray-400 text-lg font-mono">&gt; From detection to resolution — Digitech HMS gives you the complete picture.</p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -282,7 +282,7 @@ function BeforeAfter() {
             <ShieldAlert className="w-3 h-3" /> [ RISK_ASSESSMENT ]
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">The Cost of Blind Spots</h2>
-          <p className="text-gray-400 text-lg font-mono">> Don't wait for an incident to discover your security system has failed.</p>
+          <p className="text-gray-400 text-lg font-mono">&gt; Don't wait for an incident to discover your security system has failed.</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
@@ -376,7 +376,7 @@ function MultiSite() {
             </div>
             <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">Multi-Site Monitoring</h2>
             <p className="text-gray-400 text-lg mb-8 font-mono">
-              > One dashboard. Every location. Every device. Consolidate your security infrastructure health across all branches, factories, or campuses into a single, unified view.
+              &gt; One dashboard. Every location. Every device. Consolidate your security infrastructure health across all branches, factories, or campuses into a single, unified view.
             </p>
             <ul className="space-y-4 font-mono text-sm">
               {[
@@ -467,7 +467,7 @@ function Industries() {
             <Building2 className="w-3 h-3 text-emerald-500" /> [ SECTOR_DEPLOYMENTS ]
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">Built for critical security environments</h2>
-          <p className="text-gray-400 text-lg font-mono">> Enterprise-grade monitoring for any industry.</p>
+          <p className="text-gray-400 text-lg font-mono">&gt; Enterprise-grade monitoring for any industry.</p>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {industries.map((ind, i) => (
@@ -499,7 +499,7 @@ function AmcIntegration() {
               </div>
               <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">Turn your AMC into a measurable SLA</h2>
               <p className="text-gray-400 text-lg mb-8 font-mono">
-                > Most maintenance contracts offer no proof they are honoured. With Digitech HMS connected to Digitech AMC, you get total transparency on our service delivery.
+                &gt; Most maintenance contracts offer no proof they are honoured. With Digitech HMS connected to Digitech AMC, you get total transparency on our service delivery.
               </p>
               <div className="grid grid-cols-2 gap-6 font-mono">
                 <div className="bg-[#111827] border border-white/10 p-4 rounded-sm">
@@ -560,7 +560,7 @@ function PrivacyROI() {
           <div className="relative z-10">
             <Lock className="w-10 h-10 text-digitech-red mx-auto mb-4" />
             <h3 className="text-xl md:text-2xl font-bold font-mono text-white mb-4 uppercase tracking-wide">Your video stays on your premises.</h3>
-            <p className="text-gray-400 mb-8 max-w-2xl mx-auto font-mono text-sm">> Digitech HMS monitors health and status — not your surveillance footage. Built for high-security environments.</p>
+            <p className="text-gray-400 mb-8 max-w-2xl mx-auto font-mono text-sm">&gt; Digitech HMS monitors health and status — not your surveillance footage. Built for high-security environments.</p>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="flex flex-col items-center gap-2">
                 <Video className="w-6 h-6 text-gray-500 line-through" />
@@ -585,7 +585,7 @@ function PrivacyROI() {
               <BarChart3 className="w-3 h-3 text-blue-500" /> [ SYSTEM_VALUE_METRICS ]
             </div>
             <h2 className="text-3xl font-bold font-mono uppercase tracking-wide text-white mb-4">What does Digitech HMS save you?</h2>
-            <p className="text-gray-400 font-mono text-sm">> The business value of continuous monitoring.</p>
+            <p className="text-gray-400 font-mono text-sm">&gt; The business value of continuous monitoring.</p>
           </div>
           <div className="grid md:grid-cols-2 gap-8 font-mono">
             <div className="bg-[#111827] border border-red-500/20 rounded-sm p-6 relative">
@@ -611,7 +611,12 @@ function PrivacyROI() {
             </div>
           </div>
         </div>
-    function WaitlistCTA() {
+      </div>
+    </section>
+  );
+}
+
+function WaitlistCTA() {
   return (
     <section id="waitlist" className="py-24 bg-[#050914] border-t border-white/5 relative overflow-hidden bg-tech-grid">
       <div className="container relative z-10 mx-auto px-4">
