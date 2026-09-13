@@ -145,28 +145,28 @@ function WhatWeMonitor() {
     {
       title: "CCTV Cameras",
       icon: Video,
-      items: ["Online / Offline status", "Stream availability", "IP changes", "Device health", "Connectivity"],
+      items: ["Online / Offline status", "Hardware error codes", "Time/Date sync validation", "Stream & device health"],
       accent: "from-blue-500/20 to-transparent",
       borderColor: "group-hover:border-blue-500/50"
     },
     {
       title: "NVR / DVR",
       icon: Server,
-      items: ["NVR availability", "Recording status", "HDD health", "Storage capacity", "Channel status"],
+      items: ["Online / Offline status", "HDD presence & capacity", "Storage & HDD health", "Camera channel status", "Time/Date sync validation"],
       accent: "from-digitech-red/20 to-transparent",
       borderColor: "group-hover:border-digitech-red/50"
     },
     {
-      title: "Network",
+      title: "Network Switches",
       icon: Network,
-      items: ["Managed switches", "Port status", "Uptime", "Network connectivity", "SNMP monitoring"],
+      items: ["Online / Offline status", "PoE status & consumption", "Port status & traffic", "Uplink health & status"],
       accent: "from-purple-500/20 to-transparent",
       borderColor: "group-hover:border-purple-500/50"
     },
     {
       title: "Recording",
       icon: HardDrive,
-      items: ["Recording continuity", "Recording failure", "Missing footage", "Channel-wise status"],
+      items: ["Recording retention (Days)", "Current recording status", "Recording continuity checks", "Missing footage alerts"],
       accent: "from-amber-500/20 to-transparent",
       borderColor: "group-hover:border-amber-500/50"
     },
