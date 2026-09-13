@@ -20,31 +20,31 @@ function Navbar() {
   }, [isLight]);
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-emerald-500/20 bg-[#020617]/90 backdrop-blur-md">
-      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+    <nav className="sticky top-0 z-50 w-full border-b border-digitech-red/20 bg-[#020617]/90 backdrop-blur-md">
+      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-digitech-red/50 to-transparent"></div>
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2 keep-colors">
           <img src="https://digitechhms.net/static/img/digitech-logo-light.png" alt="Digitech HMS" className="h-8 w-auto" />
         </div>
         <div className="hidden md:flex items-center gap-8 text-xs font-mono uppercase tracking-widest text-gray-400">
-          <a href="#product" className="hover:text-emerald-400 transition-colors">Product</a>
-          <a href="#features" className="hover:text-emerald-400 transition-colors">Features</a>
-          <a href="#how-it-works" className="hover:text-emerald-400 transition-colors">Workflow</a>
-          <a href="#industries" className="hover:text-emerald-400 transition-colors">Sectors</a>
-          <a href="#waitlist" className="hover:text-emerald-400 transition-colors">Waitlist</a>
+          <a href="#product" className="hover:text-red-400 transition-colors">Product</a>
+          <a href="#features" className="hover:text-red-400 transition-colors">Features</a>
+          <a href="#how-it-works" className="hover:text-red-400 transition-colors">Workflow</a>
+          <a href="#industries" className="hover:text-red-400 transition-colors">Sectors</a>
+          <a href="#waitlist" className="hover:text-red-400 transition-colors">Waitlist</a>
         </div>
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsLight(!isLight)} 
-            className="p-2 rounded-sm border border-white/5 hover:border-emerald-500/50 bg-white/5 hover:bg-emerald-500/10 text-gray-400 hover:text-emerald-400 transition-all"
+            className="p-2 rounded-sm border border-white/5 hover:border-digitech-red/50 bg-white/5 hover:bg-digitech-red/10 text-gray-400 hover:text-red-400 transition-all"
             title="Toggle Light/Dark Mode"
           >
             {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
-          <button className="hidden md:block text-xs font-mono tracking-widest uppercase text-white hover:text-emerald-400 transition-colors">
+          <button className="hidden md:block text-xs font-mono tracking-widest uppercase text-white hover:text-red-400 transition-colors">
             Login
           </button>
-          <a href="#waitlist" className="bg-emerald-500 hover:bg-emerald-400 text-[#020617] px-4 py-2 rounded-sm text-xs font-bold font-mono tracking-widest transition-colors shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+          <a href="#waitlist" className="bg-digitech-red hover:bg-red-400 text-[#020617] px-4 py-2 rounded-sm text-xs font-bold font-mono tracking-widest transition-colors shadow-[0_0_10px_rgba(229,57,53,0.2)]">
             DEMO_REQ
           </a>
         </div>
@@ -56,27 +56,27 @@ function Navbar() {
 function Hero() {
   return (
     <section className="relative pt-24 pb-32 overflow-hidden bg-[#020617] bg-cyber-dots">
-      <div className="glow-orb w-[800px] h-[800px] bg-emerald-500/10 top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+      <div className="glow-orb w-[800px] h-[800px] bg-digitech-red/10 top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#020617]/80 to-[#020617]"></div>
       
       {/* Scanline effect */}
-      <div className="absolute inset-0 pointer-events-none w-full h-[3px] bg-emerald-500/10 blur-[1px] animate-scanline z-0"></div>
+      <div className="absolute inset-0 pointer-events-none w-full h-[3px] bg-digitech-red/10 blur-[1px] animate-scanline z-0"></div>
 
       <div className="container relative z-10 mx-auto px-4 flex flex-col items-center text-center">
         <div className="max-w-4xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono uppercase tracking-widest mb-8 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse-fast"></span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm bg-digitech-red/10 border border-digitech-red/20 text-red-400 text-xs font-mono uppercase tracking-widest mb-8 shadow-[0_0_15px_rgba(229,57,53,0.2)]">
+            <span className="flex h-2 w-2 rounded-full bg-red-400 animate-pulse-fast"></span>
             System Status: Active Monitoring
           </div>
           <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight mb-6 tracking-tight">
             Security Infrastructure <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 font-mono tracking-tighter">Telemetry & Health.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-cyan-500 font-mono tracking-tighter">Telemetry & Health.</span>
           </h1>
           <p className="text-xl text-gray-400 mb-10 leading-relaxed font-mono max-w-3xl mx-auto">
             &gt; Continuous 24x7 monitoring for your entire security network. Digitech HMS automatically detects offline cameras, NVR storage failures, and network switch latency—delivering root-cause diagnostics before critical incidents occur.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a href="#waitlist" className="bg-emerald-500 hover:bg-emerald-400 text-[#020617] px-8 py-4 rounded-sm font-bold font-mono tracking-widest flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+            <a href="#waitlist" className="bg-digitech-red hover:bg-red-400 text-[#020617] px-8 py-4 rounded-sm font-bold font-mono tracking-widest flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(229,57,53,0.3)]">
               [ REQUEST_PLATFORM_DEMO ] <ArrowRight className="w-5 h-5" />
             </a>
             <a href="#waitlist" className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-8 py-4 rounded-sm font-mono tracking-widest flex items-center justify-center gap-2 transition-all">
@@ -87,8 +87,8 @@ function Hero() {
 
         <div className="w-full max-w-7xl mx-auto relative mt-4">
           {/* Old Dashboard Image - Now Full Width */}
-          <div className="rounded-sm border border-emerald-500/20 shadow-[0_0_50px_rgba(16,185,129,0.15)] overflow-hidden relative group bg-[#020617] p-1">
-            <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10 pointer-events-none mix-blend-overlay"></div>
+          <div className="rounded-sm border border-digitech-red/20 shadow-[0_0_50px_rgba(229,57,53,0.15)] overflow-hidden relative group bg-[#020617] p-1">
+            <div className="absolute inset-0 bg-digitech-red/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10 pointer-events-none mix-blend-overlay"></div>
             <img 
               src="https://digitechhms.net/static/img/shot-dashboard.webp" 
               alt="The DHMS dashboard: 17 monitored devices, 13 up, 3 down, 3 open incidents" 
@@ -153,8 +153,8 @@ function WhatWeMonitor() {
       title: "NVR / DVR",
       icon: Server,
       items: ["NVR availability", "Recording status", "HDD health", "Storage capacity", "Channel status"],
-      accent: "from-emerald-500/20 to-transparent",
-      borderColor: "group-hover:border-emerald-500/50"
+      accent: "from-digitech-red/20 to-transparent",
+      borderColor: "group-hover:border-digitech-red/50"
     },
     {
       title: "Network",
@@ -189,7 +189,7 @@ function WhatWeMonitor() {
   return (
     <section className="py-24 bg-[#020617] bg-cyber-dots relative border-b border-white/5" id="features">
       <div className="glow-orb w-[600px] h-[600px] bg-blue-500/10 top-0 left-0 -translate-x-1/2 -translate-y-1/2"></div>
-      <div className="glow-orb w-[400px] h-[400px] bg-emerald-500/5 bottom-0 right-0 translate-x-1/4 translate-y-1/4"></div>
+      <div className="glow-orb w-[400px] h-[400px] bg-digitech-red/5 bottom-0 right-0 translate-x-1/4 translate-y-1/4"></div>
       
       <div className="container mx-auto px-4 relative z-10">
         <div className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-8">
@@ -323,17 +323,17 @@ function BeforeAfter() {
           </div>
 
           {/* After */}
-          <div className="bg-[#111827] border border-emerald-500/30 rounded-sm p-8 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)]">
-            <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500/80"></div>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full"></div>
+          <div className="bg-[#111827] border border-digitech-red/30 rounded-sm p-8 relative overflow-hidden shadow-[0_0_30px_rgba(229,57,53,0.05)]">
+            <div className="absolute top-0 left-0 w-full h-1 bg-digitech-red/80"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-digitech-red/5 blur-3xl rounded-full"></div>
             <h3 className="text-xl font-mono uppercase tracking-wide text-white mb-8 pb-4 border-b border-white/10 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-sm bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 text-xs">✓</span>
+              <span className="w-8 h-8 rounded-sm bg-digitech-red/10 border border-digitech-red/20 flex items-center justify-center text-digitech-red text-xs">✓</span>
               With Digitech HMS
             </h3>
             <div className="space-y-6 relative z-10 font-mono text-sm">
               <div className="flex gap-4 items-start">
-                <div className="w-6 h-6 rounded-sm border border-emerald-500/20 bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5"><span className="w-2 h-2 rounded-full bg-emerald-500"></span></div>
-                <div><div className="text-emerald-400 font-medium">Camera working</div><div className="text-xs text-gray-500 mt-1">Monitored 24x7</div></div>
+                <div className="w-6 h-6 rounded-sm border border-digitech-red/20 bg-digitech-red/10 flex items-center justify-center shrink-0 mt-0.5"><span className="w-2 h-2 rounded-full bg-digitech-red"></span></div>
+                <div><div className="text-red-400 font-medium">Camera working</div><div className="text-xs text-gray-500 mt-1">Monitored 24x7</div></div>
               </div>
               <div className="flex gap-4 items-start ml-3 pl-6 border-l border-white/10 pb-6 -mt-6 pt-6">
                 <div className="text-red-400">Camera failure detected instantly</div>
@@ -350,7 +350,7 @@ function BeforeAfter() {
                 <div><div className="text-blue-400 font-medium">Fault resolved</div><div className="text-xs text-gray-500 mt-1">Proactive maintenance</div></div>
               </div>
               <div className="flex gap-4 items-start ml-3 pl-6 border-l border-white/10 pb-6 -mt-6 pt-6">
-                <div className="text-emerald-400">Camera restored quickly</div>
+                <div className="text-red-400">Camera restored quickly</div>
               </div>
               <div className="flex gap-4 items-start">
                 <div className="w-6 h-6 rounded-sm border border-white/10 bg-white/5 flex items-center justify-center shrink-0 mt-0.5"><BarChart3 className="w-3 h-3 text-white" /></div>
@@ -367,7 +367,7 @@ function BeforeAfter() {
 function MultiSite() {
   return (
     <section className="py-24 bg-[#020617] bg-tech-grid border-y border-white/10 overflow-hidden relative">
-      <div className="absolute inset-0 pointer-events-none w-full h-[3px] bg-emerald-500/10 blur-[1px] animate-scanline z-0"></div>
+      <div className="absolute inset-0 pointer-events-none w-full h-[3px] bg-digitech-red/10 blur-[1px] animate-scanline z-0"></div>
       <div className="container relative z-10 mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
@@ -386,7 +386,7 @@ function MultiSite() {
                 "Standardised reporting across regions"
               ].map((item, i) => (
                 <li key={i} className="flex items-center gap-3 text-gray-400">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> [OK] {item}
+                  <CheckCircle2 className="w-4 h-4 text-red-400" /> [OK] {item}
                 </li>
               ))}
             </ul>
@@ -401,16 +401,16 @@ function MultiSite() {
                   <div className="text-blue-400 text-[10px] tracking-widest mt-1">GLOBAL.NOC.NODE</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-emerald-400 text-xs animate-pulse">● LIVE</div>
+                  <div className="text-red-400 text-xs animate-pulse">● LIVE</div>
                   <div className="text-gray-500 text-[10px] mt-1">12 SITES ONLINE</div>
                 </div>
               </div>
               
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
-                <div className="bg-white/5 border border-white/10 rounded-sm p-3 relative group hover:border-emerald-500/50 transition-colors cursor-default">
+                <div className="bg-white/5 border border-white/10 rounded-sm p-3 relative group hover:border-digitech-red/50 transition-colors cursor-default">
                   <div className="text-gray-400 text-[10px] mb-1">NODE_DEL</div>
                   <div className="text-white text-sm mb-1 uppercase tracking-wide">Delhi</div>
-                  <div className="text-emerald-400 text-lg">99.2%</div>
+                  <div className="text-red-400 text-lg">99.2%</div>
                 </div>
                 <div className="bg-blue-500/5 border border-yellow-500/30 rounded-sm p-3 relative group hover:border-yellow-500/80 transition-colors cursor-default shadow-[0_0_10px_rgba(234,179,8,0.05)]">
                   <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-500 rounded-bl-sm animate-pulse-fast"></div>
@@ -418,20 +418,20 @@ function MultiSite() {
                   <div className="text-white text-sm mb-1 uppercase tracking-wide">Gurugram</div>
                   <div className="text-yellow-400 text-lg">97.8%</div>
                 </div>
-                <div className="bg-white/5 border border-white/10 rounded-sm p-3 relative group hover:border-emerald-500/50 transition-colors cursor-default">
+                <div className="bg-white/5 border border-white/10 rounded-sm p-3 relative group hover:border-digitech-red/50 transition-colors cursor-default">
                   <div className="text-gray-400 text-[10px] mb-1">NODE_NOI</div>
                   <div className="text-white text-sm mb-1 uppercase tracking-wide">Noida</div>
-                  <div className="text-emerald-400 text-lg">99.7%</div>
+                  <div className="text-red-400 text-lg">99.7%</div>
                 </div>
-                <div className="bg-white/5 border border-white/10 rounded-sm p-3 relative group hover:border-emerald-500/50 transition-colors cursor-default">
+                <div className="bg-white/5 border border-white/10 rounded-sm p-3 relative group hover:border-digitech-red/50 transition-colors cursor-default">
                   <div className="text-gray-400 text-[10px] mb-1">NODE_MUM</div>
                   <div className="text-white text-sm mb-1 uppercase tracking-wide">Mumbai</div>
-                  <div className="text-emerald-400 text-lg">98.9%</div>
+                  <div className="text-red-400 text-lg">98.9%</div>
                 </div>
-                <div className="bg-white/5 border border-white/10 rounded-sm p-3 relative group hover:border-emerald-500/50 transition-colors cursor-default">
+                <div className="bg-white/5 border border-white/10 rounded-sm p-3 relative group hover:border-digitech-red/50 transition-colors cursor-default">
                   <div className="text-gray-400 text-[10px] mb-1">NODE_CHE</div>
                   <div className="text-white text-sm mb-1 uppercase tracking-wide">Chennai</div>
-                  <div className="text-emerald-400 text-lg">99.5%</div>
+                  <div className="text-red-400 text-lg">99.5%</div>
                 </div>
                 <div className="bg-red-500/5 border border-red-500/30 rounded-sm p-3 relative group hover:border-red-500/80 transition-colors cursor-default shadow-[0_0_10px_rgba(229,57,53,0.05)]">
                   <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-bl-sm animate-pulse-fast"></div>
@@ -463,17 +463,17 @@ function Industries() {
     <section className="py-24 bg-[#050914] bg-tech-grid relative border-b border-white/10" id="industries">
       <div className="container relative z-10 mx-auto px-4">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 text-emerald-400 text-[10px] font-mono uppercase tracking-widest mb-6">
-            <Building2 className="w-3 h-3 text-emerald-500" /> [ SECTOR_DEPLOYMENTS ]
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-white/5 border border-white/10 text-red-400 text-[10px] font-mono uppercase tracking-widest mb-6">
+            <Building2 className="w-3 h-3 text-digitech-red" /> [ SECTOR_DEPLOYMENTS ]
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">Built for critical security environments</h2>
           <p className="text-gray-400 text-lg font-mono">&gt; Enterprise-grade monitoring for any industry.</p>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {industries.map((ind, i) => (
-            <div key={i} className="flex items-start gap-4 p-6 bg-[#111827]/90 backdrop-blur-md border border-white/10 rounded-sm hover:border-emerald-500/30 transition-colors group">
-              <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-sm flex items-center justify-center shrink-0 group-hover:bg-emerald-500/10 transition-colors">
-                <ind.icon className="w-5 h-5 text-gray-400 group-hover:text-emerald-400" />
+            <div key={i} className="flex items-start gap-4 p-6 bg-[#111827]/90 backdrop-blur-md border border-white/10 rounded-sm hover:border-digitech-red/30 transition-colors group">
+              <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-sm flex items-center justify-center shrink-0 group-hover:bg-digitech-red/10 transition-colors">
+                <ind.icon className="w-5 h-5 text-gray-400 group-hover:text-red-400" />
               </div>
               <div>
                 <h3 className="text-sm font-mono uppercase text-white mb-1 tracking-wide">{ind.name}</h3>
@@ -518,28 +518,28 @@ function AmcIntegration() {
               
               <div className="text-[10px] text-gray-500 mb-4 uppercase tracking-wider flex justify-between">
                 <span>TARGET: ABC Industries</span>
-                <span className="text-emerald-400 animate-pulse">LIVE_SYNC</span>
+                <span className="text-red-400 animate-pulse">LIVE_SYNC</span>
               </div>
               <div className="space-y-4 text-sm">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-gray-400">Site Availability</span>
-                  <span className="text-emerald-400 font-bold">99.21%</span>
+                  <span className="text-red-400 font-bold">99.21%</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-gray-400">Camera Uptime</span>
-                  <span className="text-emerald-400 font-bold">99.46%</span>
+                  <span className="text-red-400 font-bold">99.46%</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-gray-400">NVR Availability</span>
-                  <span className="text-emerald-400 font-bold">100%</span>
+                  <span className="text-red-400 font-bold">100%</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
                   <span className="text-gray-400">Network Availability</span>
-                  <span className="text-emerald-400 font-bold">99.83%</span>
+                  <span className="text-red-400 font-bold">99.83%</span>
                 </div>
                 <div className="pt-4 flex justify-between items-center">
                   <span className="text-white font-bold tracking-widest">AMC SLA</span>
-                  <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1 rounded-sm text-[10px] font-bold tracking-widest">✓ COMPLIANT</span>
+                  <span className="bg-digitech-red/10 border border-digitech-red/20 text-red-400 px-3 py-1 rounded-sm text-[10px] font-bold tracking-widest">✓ COMPLIANT</span>
                 </div>
               </div>
             </div>
@@ -567,7 +567,7 @@ function PrivacyROI() {
                 <span className="text-sm font-mono text-gray-400 uppercase tracking-wide">No Video Streaming</span>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Activity className="w-6 h-6 text-emerald-500" />
+                <Activity className="w-6 h-6 text-digitech-red" />
                 <span className="text-sm font-mono text-gray-400 uppercase tracking-wide">Status Data Only</span>
               </div>
               <div className="flex flex-col items-center gap-2">
@@ -599,14 +599,14 @@ function PrivacyROI() {
                 <div className="bg-red-500/5 border border-red-500/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-red-400">↓</span> AMC disputes</div>
               </div>
             </div>
-            <div className="bg-[#111827] border border-emerald-500/20 rounded-sm p-6 relative shadow-[0_0_20px_rgba(16,185,129,0.05)]">
-              <div className="absolute top-0 left-0 w-2 h-full bg-emerald-500/80"></div>
-              <h4 className="text-emerald-400 font-bold tracking-widest mb-6 flex items-center gap-2 uppercase"><ArrowRight className="w-4 h-4 -rotate-90" /> Increases</h4>
+            <div className="bg-[#111827] border border-digitech-red/20 rounded-sm p-6 relative shadow-[0_0_20px_rgba(229,57,53,0.05)]">
+              <div className="absolute top-0 left-0 w-2 h-full bg-digitech-red/80"></div>
+              <h4 className="text-red-400 font-bold tracking-widest mb-6 flex items-center gap-2 uppercase"><ArrowRight className="w-4 h-4 -rotate-90" /> Increases</h4>
               <div className="space-y-2">
-                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-emerald-400">↑</span> Equipment availability</div>
-                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-emerald-400">↑</span> Engineer productivity</div>
-                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-emerald-400">↑</span> Security assurance</div>
-                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-emerald-400">↑</span> AMC value</div>
+                <div className="bg-digitech-red/5 border border-digitech-red/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-red-400">↑</span> Equipment availability</div>
+                <div className="bg-digitech-red/5 border border-digitech-red/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-red-400">↑</span> Engineer productivity</div>
+                <div className="bg-digitech-red/5 border border-digitech-red/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-red-400">↑</span> Security assurance</div>
+                <div className="bg-digitech-red/5 border border-digitech-red/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-red-400">↑</span> AMC value</div>
               </div>
             </div>
           </div>
@@ -621,11 +621,11 @@ function WaitlistCTA() {
     <section id="waitlist" className="py-24 bg-[#050914] border-t border-white/5 relative overflow-hidden bg-tech-grid">
       <div className="container relative z-10 mx-auto px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono uppercase tracking-widest mb-6">
-            <Zap className="w-3 h-3 text-emerald-500" /> [ EARLY_ACCESS ]
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-digitech-red/10 border border-digitech-red/20 text-red-400 text-[10px] font-mono uppercase tracking-widest mb-6">
+            <Zap className="w-3 h-3 text-digitech-red" /> [ EARLY_ACCESS ]
           </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-16 tracking-tight uppercase font-mono">
-            Join the <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-600">DHMS</span> waitlist
+            Join the <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-red-600">DHMS</span> waitlist
           </h2>
 
           <div className="grid md:grid-cols-3 gap-12">
@@ -633,34 +633,34 @@ function WaitlistCTA() {
               <div className="grid md:grid-cols-2 gap-6 font-mono text-sm">
                 <div>
                   <label htmlFor="wl-name" className="block text-gray-400 mb-2 uppercase tracking-wide">Your name *</label>
-                  <input id="wl-name" name="name" type="text" maxLength={120} autoComplete="name" required placeholder="Rajesh Kumar" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" />
+                  <input id="wl-name" name="name" type="text" maxLength={120} autoComplete="name" required placeholder="Rajesh Kumar" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors" />
                 </div>
                 <div>
                   <label htmlFor="wl-phone" className="block text-gray-400 mb-2 uppercase tracking-wide">Phone number *</label>
-                  <input id="wl-phone" name="phone" type="tel" maxLength={20} autoComplete="tel" required placeholder="98765 43210" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" />
+                  <input id="wl-phone" name="phone" type="tel" maxLength={20} autoComplete="tel" required placeholder="98765 43210" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors" />
                 </div>
               </div>
 
               <div className="font-mono text-sm">
                 <label htmlFor="wl-org" className="block text-gray-400 mb-2 uppercase tracking-wide">Business or organisation *</label>
-                <input id="wl-org" name="organisation" type="text" maxLength={160} autoComplete="organization" required placeholder="Sunrise Public School" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" />
+                <input id="wl-org" name="organisation" type="text" maxLength={160} autoComplete="organization" required placeholder="Sunrise Public School" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors" />
               </div>
 
               <div className="grid md:grid-cols-2 gap-6 font-mono text-sm">
                 <div>
                   <label htmlFor="wl-city" className="block text-gray-400 mb-2 uppercase tracking-wide">City</label>
-                  <input id="wl-city" name="city" type="text" maxLength={80} autoComplete="address-level2" placeholder="New Delhi" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" />
+                  <input id="wl-city" name="city" type="text" maxLength={80} autoComplete="address-level2" placeholder="New Delhi" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors" />
                 </div>
                 <div>
                   <label htmlFor="wl-email" className="block text-gray-400 mb-2 uppercase tracking-wide">Email (optional)</label>
-                  <input id="wl-email" name="email" type="email" maxLength={200} autoComplete="email" placeholder="you@company.com" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" />
+                  <input id="wl-email" name="email" type="email" maxLength={200} autoComplete="email" placeholder="you@company.com" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors" />
                 </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-6 font-mono text-sm">
                 <div>
                   <label htmlFor="wl-sites" className="block text-gray-400 mb-2 uppercase tracking-wide">Number of locations</label>
-                  <select id="wl-sites" name="site_count" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors">
+                  <select id="wl-sites" name="site_count" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors">
                     <option value="1">1 location</option>
                     <option value="2">2 &ndash; 4 locations</option>
                     <option value="5">5 &ndash; 10 locations</option>
@@ -669,7 +669,7 @@ function WaitlistCTA() {
                 </div>
                 <div>
                   <label htmlFor="wl-plan" className="block text-gray-400 mb-2 uppercase tracking-wide">Which plan interests you</label>
-                  <select id="wl-plan" name="plan_interest" defaultValue="yearly" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors">
+                  <select id="wl-plan" name="plan_interest" defaultValue="yearly" className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors">
                     <option value="yearly">Yearly &mdash; ₹122,999 per site</option>
                     <option value="quarterly">Quarterly &mdash; ₹16,749 per site</option>
                     <option value="monthly">Monthly &mdash; ₹12,499 per site</option>
@@ -680,7 +680,7 @@ function WaitlistCTA() {
 
               <div className="font-mono text-sm">
                 <label htmlFor="wl-message" className="block text-gray-400 mb-2 uppercase tracking-wide">Anything you would like us to know</label>
-                <textarea id="wl-message" name="message" rows={3} maxLength={1000} placeholder="We have 40 cameras across two floors and a Hikvision recorder." className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors"></textarea>
+                <textarea id="wl-message" name="message" rows={3} maxLength={1000} placeholder="We have 40 cameras across two floors and a Hikvision recorder." className="w-full bg-[#111827] border border-white/10 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-digitech-red transition-colors"></textarea>
               </div>
 
               <div className="hidden" aria-hidden="true">
@@ -688,7 +688,7 @@ function WaitlistCTA() {
                 <input id="wl-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
               </div>
 
-              <button className="bg-emerald-500 hover:bg-emerald-400 text-[#050B14] px-8 py-4 rounded-sm font-bold font-mono tracking-widest transition-colors mt-4 w-full md:w-auto" type="submit" id="wl-submit">
+              <button className="bg-digitech-red hover:bg-red-400 text-[#050B14] px-8 py-4 rounded-sm font-bold font-mono tracking-widest transition-colors mt-4 w-full md:w-auto" type="submit" id="wl-submit">
                 [ SUBMIT_REQUEST ]
               </button>
 
