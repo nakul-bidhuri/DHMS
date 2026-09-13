@@ -221,7 +221,7 @@ function WhatWeMonitor() {
               <ul className="space-y-3">
                 {module.items.map((item, j) => (
                   <li key={j} className="flex items-center gap-3 text-gray-500 group-hover:text-gray-300 text-sm font-mono transition-colors">
-                    <CheckCircle2 className="w-3 h-3 opacity-50 shrink-0" />
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
                     {item}
                   </li>
                 ))}
@@ -599,14 +599,14 @@ function PrivacyROI() {
                 <div className="bg-red-500/5 border border-red-500/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-red-400">↓</span> AMC disputes</div>
               </div>
             </div>
-            <div className="bg-[#111827] border border-digitech-red/20 rounded-sm p-6 relative shadow-[0_0_20px_rgba(229,57,53,0.05)]">
-              <div className="absolute top-0 left-0 w-2 h-full bg-digitech-red/80"></div>
-              <h4 className="text-red-400 font-bold tracking-widest mb-6 flex items-center gap-2 uppercase"><ArrowRight className="w-4 h-4 -rotate-90" /> Increases</h4>
+            <div className="bg-[#111827] border border-emerald-500/20 rounded-sm p-6 relative shadow-[0_0_20px_rgba(16,185,129,0.05)]">
+              <div className="absolute top-0 left-0 w-2 h-full bg-emerald-500/80"></div>
+              <h4 className="text-emerald-400 font-bold tracking-widest mb-6 flex items-center gap-2 uppercase"><ArrowRight className="w-4 h-4 -rotate-90" /> Increases</h4>
               <div className="space-y-2">
-                <div className="bg-digitech-red/5 border border-digitech-red/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-red-400">↑</span> Equipment availability</div>
-                <div className="bg-digitech-red/5 border border-digitech-red/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-red-400">↑</span> Engineer productivity</div>
-                <div className="bg-digitech-red/5 border border-digitech-red/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-red-400">↑</span> Security assurance</div>
-                <div className="bg-digitech-red/5 border border-digitech-red/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-red-400">↑</span> AMC value</div>
+                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-emerald-400">↑</span> Equipment availability</div>
+                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-emerald-400">↑</span> Engineer productivity</div>
+                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-emerald-400">↑</span> Security assurance</div>
+                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-sm p-3 text-gray-300 flex items-center gap-3 text-sm"><span className="text-emerald-400">↑</span> AMC value</div>
               </div>
             </div>
           </div>
