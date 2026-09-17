@@ -74,4 +74,4 @@ body {
 
 /* Light Mode CSS Trick */
 html.light-theme { filter: invert(1) hue-rotate(180deg); }
-html.light-theme img, html.light-theme video, html.light-theme .keep-colors { filter: invert(1) hue-rotate(180deg); }
+html.light-theme img:not(.logo-invert), html.light-theme video, html.light-theme .keep-colors { filter: invert(1) hue-rotate(180deg); }
