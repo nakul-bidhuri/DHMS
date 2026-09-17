@@ -24,7 +24,7 @@ function Navbar() {
       <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-digitech-red/50 to-transparent"></div>
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img src="https://digitechhms.net/static/img/digitech-logo-light.png" alt="Digitech HMS" className="h-8 w-auto logo-invert" />
+          <img src="https://digitechhms.net/static/img/digitech-logo-light.png" alt="Digitech HMS" className="h-8 w-auto" />
         </div>
         <div className="hidden md:flex items-center gap-8 text-xs text-gray-400">
           <a href="#product" className="hover:text-red-400 transition-colors">Product</a>
