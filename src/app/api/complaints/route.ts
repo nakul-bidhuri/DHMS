@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-let complaints = [
+const complaints = [
   {
     id: 1,
     date: new Date().toISOString().split('T')[0],

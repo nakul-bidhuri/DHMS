@@ -282,7 +282,7 @@ function BeforeAfter() {
             <ShieldAlert className="w-3 h-3" /> [ RISK_ASSESSMENT ]
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">The Cost of Blind Spots</h2>
-          <p className="text-gray-400 text-lg">&gt; Don't wait for an incident to discover your security system has failed.</p>
+          <p className="text-gray-400 text-lg">&gt; Don&apos;t wait for an incident to discover your security system has failed.</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
