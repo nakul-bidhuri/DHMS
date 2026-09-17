@@ -15,7 +15,7 @@ export default function AdminPage() {
       });
   }, []);
 
-  const updateComplaint = async (id: number, field: string, value: string) => {
+  const updateComplaint = async (id: number | string, field: string, value: string) => {
     // Optimistic UI update
     const updated = complaints.map(c => c.id === id ? { ...c, [field]: value } : c);
     setComplaints(updated);
