@@ -95,7 +95,7 @@ export default function AdminPage() {
                 <tr><td colSpan={21} className="py-8 text-center text-gray-500">No complaints found.</td></tr>
               ) : (
                 complaints.map((item, idx) => (
-                  <tr key={item.id} className="border-b border-gray-200 bg-white hover:bg-gray-50 transition-colors">
+                  <tr key={item.id} className="border-b border-gray-200 bg-white hover:bg-gray-50 transition-colors text-black">
                     {/* Read-Only Client Data */}
                     <td className="py-2 px-4 border-r border-gray-200 sticky left-0 bg-white z-10">{idx + 1}</td>
                     <td className="py-2 px-4 border-r border-gray-200 sticky left-[60px] bg-white z-10">{item.date}</td>
