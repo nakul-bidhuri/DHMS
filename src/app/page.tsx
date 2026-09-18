@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { 
-  ShieldAlert, Activity, MonitorPlay, Network, Server, HardDrive, ShieldCheck, CheckCircle2, ArrowRight, Video,
-  Zap, Lock, PlayCircle, BarChart3, AlertTriangle, Clock, MapPin, Building2, Briefcase, GraduationCap, Hospital,
+  ShieldAlert, Activity, Network, Server, HardDrive, ShieldCheck, CheckCircle2, ArrowRight, Video,
+  Zap, Lock, BarChart3, MapPin, Building2, Briefcase, GraduationCap, Hospital,
   Home, Landmark, WifiOff, Moon, Sun
 } from "lucide-react";
 

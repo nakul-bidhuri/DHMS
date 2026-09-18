@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 export default function AdminPage() {
   const [complaints, setComplaints] = useState<Record<string, string | number>[]>([]);
