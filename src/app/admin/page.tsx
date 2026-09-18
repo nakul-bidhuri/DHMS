@@ -44,7 +44,7 @@ export default function AdminPage() {
           <div className="flex gap-3">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-              <input type="text" placeholder="Search tickets..." className="pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <input type="text" placeholder="Search tickets..." className="pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black" />
             </div>
           </div>
         </div>
@@ -108,11 +108,11 @@ export default function AdminPage() {
 
                     {/* Editable Admin Data */}
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <input type="date" className="w-full border border-gray-300 rounded p-1 text-sm focus:ring-1"
+                      <input type="date" className="w-full border border-gray-300 rounded p-1 text-sm focus:ring-1 text-black"
                         value={item.assignedDate} onChange={e => updateComplaint(item.id, 'assignedDate', e.target.value)} />
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white"
+                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white text-black"
                         value={item.engineer1} onChange={e => updateComplaint(item.id, 'engineer1', e.target.value)}>
                         <option value="">Select Engineer</option>
                         <option>Abdul</option>
@@ -125,7 +125,7 @@ export default function AdminPage() {
                       </select>
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white"
+                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white text-black"
                         value={item.engineer2} onChange={e => updateComplaint(item.id, 'engineer2', e.target.value)}>
                         <option value="">Select Engineer</option>
                         <option>Abdul</option>
@@ -138,7 +138,7 @@ export default function AdminPage() {
                       </select>
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white"
+                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white text-black"
                         value={item.problem} onChange={e => updateComplaint(item.id, 'problem', e.target.value)}>
                         <option value="">Select Problem</option>
                         <option>Camera Not Working</option>
@@ -150,31 +150,31 @@ export default function AdminPage() {
                       </select>
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm" placeholder="Findings..."
+                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm text-black" placeholder="Findings..."
                         value={item.finding} onChange={e => updateComplaint(item.id, 'finding', e.target.value)} />
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm" placeholder="Actions taken..."
+                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm text-black" placeholder="Actions taken..."
                         value={item.actionTaken} onChange={e => updateComplaint(item.id, 'actionTaken', e.target.value)} />
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm" placeholder="Materials..."
+                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm text-black" placeholder="Materials..."
                         value={item.materials} onChange={e => updateComplaint(item.id, 'materials', e.target.value)} />
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm" placeholder="Type..."
+                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm text-black" placeholder="Type..."
                         value={item.rectificationType} onChange={e => updateComplaint(item.id, 'rectificationType', e.target.value)} />
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm" placeholder="Used material..."
+                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm text-black" placeholder="Used material..."
                         value={item.usedMaterial} onChange={e => updateComplaint(item.id, 'usedMaterial', e.target.value)} />
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm" placeholder="Required..."
+                      <input type="text" className="w-full border border-gray-300 rounded p-1 text-sm text-black" placeholder="Required..."
                         value={item.requiredMaterial} onChange={e => updateComplaint(item.id, 'requiredMaterial', e.target.value)} />
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white"
+                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white text-black"
                         value={item.remarks} onChange={e => updateComplaint(item.id, 'remarks', e.target.value)}>
                         <option value="">Select Remark</option>
                         <option>U/W</option>
@@ -183,7 +183,7 @@ export default function AdminPage() {
                       </select>
                     </td>
                     <td className="py-2 px-4 border-r border-gray-200">
-                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white"
+                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white text-black"
                         value={item.status} onChange={e => updateComplaint(item.id, 'status', e.target.value)}>
                         <option value="">Select Status</option>
                         <option>U/P</option>
@@ -197,7 +197,7 @@ export default function AdminPage() {
                       </select>
                     </td>
                     <td className="py-2 px-4">
-                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white"
+                      <select className="w-full border border-gray-300 rounded p-1 text-sm bg-white text-black"
                         value={item.finalStatus} onChange={e => updateComplaint(item.id, 'finalStatus', e.target.value)}>
                         <option value="">Final Status</option>
                         <option>Complete</option>

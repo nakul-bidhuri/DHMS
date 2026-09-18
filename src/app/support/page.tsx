@@ -57,29 +57,29 @@ export default function SupportPage() {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Client / Company Name *</label>
-            <input required type="text" className="w-full border border-gray-300 rounded-md p-2" 
+            <input required type="text" className="w-full border border-gray-300 rounded-md p-2 text-black" 
               value={formData.clientName} onChange={e => setFormData({...formData, clientName: e.target.value})} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person *</label>
-              <input required type="text" className="w-full border border-gray-300 rounded-md p-2" 
+              <input required type="text" className="w-full border border-gray-300 rounded-md p-2 text-black" 
                 value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number *</label>
-              <input required type="tel" className="w-full border border-gray-300 rounded-md p-2" 
+              <input required type="tel" className="w-full border border-gray-300 rounded-md p-2 text-black" 
                 value={formData.contactNumber} onChange={e => setFormData({...formData, contactNumber: e.target.value})} />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Site Address *</label>
-            <input required type="text" className="w-full border border-gray-300 rounded-md p-2" 
+            <input required type="text" className="w-full border border-gray-300 rounded-md p-2 text-black" 
               value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">System Type *</label>
-            <select className="w-full border border-gray-300 rounded-md p-2"
+            <select className="w-full border border-gray-300 rounded-md p-2 text-black"
               value={formData.complaintType} onChange={e => setFormData({...formData, complaintType: e.target.value})}>
               <option>CCTV</option>
               <option>Access Control System</option>
@@ -91,7 +91,7 @@ export default function SupportPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Problem Description *</label>
-            <textarea required rows={4} className="w-full border border-gray-300 rounded-md p-2" placeholder="Describe the issue you are facing..."
+            <textarea required rows={4} className="w-full border border-gray-300 rounded-md p-2 text-black" placeholder="Describe the issue you are facing..."
               value={formData.problem} onChange={e => setFormData({...formData, problem: e.target.value})}></textarea>
           </div>
           <button disabled={loading} type="submit" className="w-full bg-digitech-red hover:bg-red-600 text-white font-bold py-3 px-4 rounded-md transition-colors">
