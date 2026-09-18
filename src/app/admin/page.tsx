@@ -5,6 +5,13 @@ import { Search } from 'lucide-react';
 export default function AdminPage() {
   const [complaints, setComplaints] = useState<Record<string, string | number>[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredComplaints = complaints.filter(item => 
+    Object.values(item).some(val => 
+      val?.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  );
 
   useEffect(() => {
     fetch('/api/complaints')
@@ -44,7 +51,7 @@ export default function AdminPage() {
           <div className="flex gap-3">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-              <input type="text" placeholder="Search tickets..." className="pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black" />
+              <input type="text" placeholder="Search tickets..." className="pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-black" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             </div>
           </div>
         </div>
@@ -91,10 +98,10 @@ export default function AdminPage() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={21} className="py-8 text-center text-gray-500">Loading complaints...</td></tr>
-              ) : complaints.length === 0 ? (
+              ) : filteredComplaints.length === 0 ? (
                 <tr><td colSpan={21} className="py-8 text-center text-gray-500">No complaints found.</td></tr>
               ) : (
-                complaints.map((item, idx) => (
+                filteredComplaints.map((item, idx) => (
                   <tr key={item.id} className="border-b border-gray-200 bg-white hover:bg-gray-50 transition-colors text-black">
                     {/* Read-Only Client Data */}
                     <td className="py-2 px-4 border-r border-gray-200 sticky left-0 bg-white z-10">{idx + 1}</td>
