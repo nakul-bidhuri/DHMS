@@ -50,6 +50,54 @@ export async function POST(request: Request) {
     
     complaints.unshift(newComplaint);
     await updateDB(complaints);
+
+    // ==========================================
+    // NOTIFICATION LOGIC (Email & WhatsApp)
+    // ==========================================
+    
+    const notificationMessage = \New Complaint Received!
+Ticket: \
+Client: \
+Phone: \
+Email: \
+Problem: \\;
+
+    // 1. Send Email via FormSubmit (Requires one-time activation click on first run)
+    try {
+      await fetch('https://formsubmit.co/ajax/vineet@digitechservices.net', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Referer': 'https://digitechhms.net'
+        },
+        body: JSON.stringify({
+          subject: 'New Complaint Registered: ' + newComplaint.ticketNo,
+          message: notificationMessage
+        })
+      });
+      console.log('Email trigger sent via FormSubmit.');
+    } catch (e) {
+      console.error('Email failed', e);
+    }
+
+    // 2. Send WhatsApp via CallMeBot
+    // NOTE: You must get an API Key from CallMeBot by sending a WhatsApp message to them.
+    // Replace 'YOUR_API_KEY_HERE' with your actual key once you get it.
+    try {
+      const whatsappKey = 'YOUR_API_KEY_HERE';
+      const encodedMessage = encodeURIComponent(notificationMessage);
+      const whatsappUrl = \https://api.callmebot.com/whatsapp.php?phone=9999760222&text=\&apikey=\\;
+      
+      if (whatsappKey !== 'YOUR_API_KEY_HERE') {
+        await fetch(whatsappUrl);
+        console.log('WhatsApp notification sent!');
+      } else {
+        console.log('WhatsApp notification skipped: API Key is missing.');
+      }
+    } catch (e) {
+      console.error('WhatsApp failed', e);
+    }
     
     return NextResponse.json({ success: true, complaint: newComplaint });
   } catch (error) {

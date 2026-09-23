@@ -22,19 +22,25 @@ export default function AdminPage() {
       });
   }, []);
 
-  const updateComplaint = async (id: number | string, field: string, value: string) => {
-    // Optimistic UI update
+  const updateComplaint = (id: number | string, field: string, value: string) => {
     const updated = complaints.map(c => c.id === id ? { ...c, [field]: value } : c);
     setComplaints(updated);
+  };
 
+  const saveComplaint = async (id: number | string) => {
+    const complaintToSave = complaints.find(c => c.id === id);
+    if (!complaintToSave) return;
+    
     try {
       await fetch('/api/complaints', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, [field]: value })
+        body: JSON.stringify(complaintToSave)
       });
+      alert('Complaint updated and saved successfully!');
     } catch (err) {
       console.error(err);
+      alert('Failed to save complaint.');
     }
   };
 
@@ -61,10 +67,10 @@ export default function AdminPage() {
           <table className="w-full text-sm text-left whitespace-nowrap">
             <thead>
               <tr>
-                <th colSpan={8} className="bg-orange-200 text-orange-900 border-b border-r border-orange-300 py-3 px-4 text-center font-bold text-sm">
+                <th colSpan={9} className="bg-orange-200 text-orange-900 border-b border-r border-orange-300 py-3 px-4 text-center font-bold text-sm">
                   STEP -01- (Call Registration)
                 </th>
-                <th colSpan={13} className="bg-green-300 text-green-900 border-b border-green-400 py-3 px-4 text-center font-bold text-sm">
+                <th colSpan={14} className="bg-green-300 text-green-900 border-b border-green-400 py-3 px-4 text-center font-bold text-sm">
                   STEP -02- (Call Attend Status)
                 </th>
               </tr>
@@ -75,6 +81,7 @@ export default function AdminPage() {
                 <th className="border-b border-r border-gray-200 py-3 px-4 bg-orange-50">Type/Nature of Complaint</th>
                 <th className="border-b border-r border-gray-200 py-3 px-4 bg-orange-50">Complaint/Ticket No</th>
                 <th className="border-b border-r border-gray-200 py-3 px-4 bg-orange-50">Client Name</th>
+                <th className="border-b border-r border-gray-200 py-3 px-4 bg-orange-50">Client Email</th>
                 <th className="border-b border-r border-gray-200 py-3 px-4 bg-orange-50">Address</th>
                 <th className="border-b border-r border-gray-200 py-3 px-4 bg-orange-50">Contact Person</th>
                 <th className="border-b border-r border-orange-200 py-3 px-4 bg-orange-50">Contact Number</th>
@@ -93,6 +100,7 @@ export default function AdminPage() {
                 <th className="border-b border-r border-gray-200 py-3 px-4 bg-green-50">Remarks</th>
                 <th className="border-b border-r border-gray-200 py-3 px-4 bg-green-50">Status</th>
                 <th className="border-b border-gray-200 py-3 px-4 bg-green-50">Final Status</th>
+                <th className="border-b border-gray-200 py-3 px-4 bg-green-50">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -109,6 +117,7 @@ export default function AdminPage() {
                     <td className="py-2 px-4 border-r border-gray-200">{item.complaintType}</td>
                     <td className="py-2 px-4 border-r border-gray-200 font-medium text-blue-600">{item.ticketNo}</td>
                     <td className="py-2 px-4 border-r border-gray-200">{item.clientName}</td>
+                    <td className="py-2 px-4 border-r border-gray-200">{item.clientEmail}</td>
                     <td className="py-2 px-4 border-r border-gray-200">{item.address}</td>
                     <td className="py-2 px-4 border-r border-gray-200">{item.contactPerson}</td>
                     <td className="py-2 px-4 border-r border-gray-200 border-r-orange-200">{item.contactNumber}</td>
@@ -211,6 +220,11 @@ export default function AdminPage() {
                         <option>Quotation sent</option>
                         <option>Invoice raise</option>
                       </select>
+                    </td>
+                    <td className="py-2 px-4">
+                      <button onClick={() => saveComplaint(item.id)} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded text-sm transition-colors shadow-sm">
+                        Save
+                      </button>
                     </td>
                   </tr>
                 ))

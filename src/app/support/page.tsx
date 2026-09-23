@@ -5,6 +5,7 @@ import { ShieldCheck, CheckCircle2 } from 'lucide-react';
 export default function SupportPage() {
   const [formData, setFormData] = useState({
     clientName: '',
+    clientEmail: '',
     contactPerson: '',
     contactNumber: '',
     address: '',
@@ -59,6 +60,11 @@ export default function SupportPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Client / Company Name *</label>
             <input required type="text" className="w-full border border-gray-300 rounded-md p-2 text-black" 
               value={formData.clientName} onChange={e => setFormData({...formData, clientName: e.target.value})} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Client Email Address *</label>
+            <input required type="email" className="w-full border border-gray-300 rounded-md p-2 text-black" 
+              value={formData.clientEmail} onChange={e => setFormData({...formData, clientEmail: e.target.value})} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
