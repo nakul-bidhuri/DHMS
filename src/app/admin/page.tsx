@@ -2,39 +2,33 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
-  Inbox, 
   Filter, 
-  Tag, 
-  AlertCircle, 
-  CheckCircle2, 
+  Inbox, 
+  LayoutDashboard, 
+  Package, 
+  Zap, 
+  Wrench, 
+  ShieldAlert, 
+  LifeBuoy, 
+  Settings, 
+  Plus, 
+  X, 
+  Check, 
   Clock, 
-  User, 
-  Phone, 
+  AlertTriangle, 
+  CheckCircle2, 
+  HelpCircle, 
   Mail, 
-  MessageSquare, 
+  Phone, 
+  MapPin, 
   Save, 
   RefreshCw, 
-  Layers, 
   ExternalLink, 
-  Shield, 
   ArrowUpRight, 
-  SlidersHorizontal, 
-  AlertTriangle, 
-  Check, 
-  ChevronRight, 
-  Calendar, 
-  Wrench, 
-  FileText, 
-  Send, 
-  Table, 
-  LayoutGrid, 
-  X, 
-  MessageCircle,
-  Building,
-  MapPin,
-  Flame,
-  CheckCircle,
-  HelpCircle
+  SlidersHorizontal,
+  ChevronDown,
+  Table,
+  LayoutGrid
 } from 'lucide-react';
 
 interface ComplaintItem {
@@ -65,6 +59,37 @@ interface ComplaintItem {
   [key: string]: string | number | undefined;
 }
 
+// Brand Logo Component with guaranteed zero-failure fallback
+function DigitechLogo() {
+  const [imgError, setImgError] = useState(false);
+
+  return (
+    <div className="flex items-center gap-2.5">
+      {!imgError ? (
+        <img 
+          src="/digitech-logo.svg" 
+          alt="Digitech HMS" 
+          onError={() => setImgError(true)}
+          className="h-7 w-auto object-contain"
+        />
+      ) : (
+        <div className="flex items-center gap-2">
+          {/* High-tech shield vector emblem */}
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center shadow-md shadow-red-950/50 border border-red-400/30">
+            <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-black text-sm tracking-wider text-white">DIGITECH</span>
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white tracking-wide">HMS</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const [complaints, setComplaints] = useState<ComplaintItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,36 +97,34 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Navigation & View State
-  const [activeNav, setActiveNav] = useState<'inbox' | 'all' | 'escalated' | 'approval' | 'resolved'>('inbox');
+  const [activeNav, setActiveNav] = useState<string>('inbox');
   const [viewMode, setViewMode] = useState<'inbox' | 'table'>('inbox');
   const [selectedTicketId, setSelectedTicketId] = useState<string | number | null>(null);
 
-  // Filters requested by user:
-  // 1. Status: All, Open, Awaiting Approval, Awaiting Customer, Escalated, Resolved, Closed
-  // 2. Priority: All, P1, P2, P3, P4
-  // 3. Channel: All, WhatsApp, Gmail, Web Portal
+  // Filters State matching Image 2
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [priorityFilter, setPriorityFilter] = useState<string>('All');
   const [channelFilter, setChannelFilter] = useState<string>('All');
 
-  // Notification / Save state
+  // Save State
   const [saveStatus, setSaveStatus] = useState<{ id: string | number | null; saving: boolean; message: string | null }>({
     id: null,
     saving: false,
     message: null,
   });
 
+  // Fetch Complaints from Remote Cloud Database
   const fetchComplaints = async (isManual = false) => {
     if (isManual) setIsRefreshing(true);
     try {
       const res = await fetch('/api/complaints', { cache: 'no-store' });
       const data = await res.json();
       if (Array.isArray(data)) {
-        // Normalize priority & channel defaults if missing
         const normalized = data.map((item: ComplaintItem) => ({
           ...item,
           priority: item.priority || (item.problem?.toLowerCase().includes('offline') ? 'P1' : 'P2'),
-          channel: item.channel || 'Web Portal',
+          channel: item.channel || (item.contactNumber ? 'WhatsApp' : 'Email'),
           status: item.status || 'Open',
         }));
         setComplaints(normalized);
@@ -139,7 +162,7 @@ export default function AdminPage() {
         body: JSON.stringify(complaintToSave)
       });
       if (res.ok) {
-        setSaveStatus({ id, saving: false, message: 'Ticket updated successfully!' });
+        setSaveStatus({ id, saving: false, message: 'Saved successfully!' });
         setTimeout(() => {
           setSaveStatus(prev => prev.id === id ? { ...prev, message: null } : prev);
         }, 3000);
@@ -148,11 +171,11 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.error(err);
-      setSaveStatus({ id, saving: false, message: 'Failed to save changes.' });
+      setSaveStatus({ id, saving: false, message: 'Failed to save.' });
     }
   };
 
-  // Normalized Status matcher
+  // Status Matcher
   const matchesStatus = (ticketStatus: string | undefined, filter: string) => {
     if (filter === 'All') return true;
     const s = (ticketStatus || '').toLowerCase();
@@ -160,9 +183,9 @@ export default function AdminPage() {
     switch (filter) {
       case 'Open':
         return s === 'open' || s === 'pending' || s === 'u/p' || s === 'under observation' || s === '';
-      case 'Awaiting Approval':
+      case 'Awaiting approval':
         return s.includes('approval') || s === 'for approval';
-      case 'Awaiting Customer':
+      case 'Awaiting customer':
         return s.includes('customer') || s.includes('quotation');
       case 'Escalated':
         return s.includes('escalat') || s.includes('repair') || s.includes('urgent');
@@ -172,28 +195,6 @@ export default function AdminPage() {
         return s.includes('closed') || s.includes('invoice');
       default:
         return s === filter.toLowerCase();
-    }
-  };
-
-  // Quick navigation filter presets
-  const handleNavClick = (nav: 'inbox' | 'all' | 'escalated' | 'approval' | 'resolved') => {
-    setActiveNav(nav);
-    if (nav === 'inbox') {
-      setStatusFilter('All');
-      setPriorityFilter('All');
-    } else if (nav === 'all') {
-      setStatusFilter('All');
-      setPriorityFilter('All');
-      setChannelFilter('All');
-    } else if (nav === 'escalated') {
-      setPriorityFilter('P1');
-      setStatusFilter('All');
-    } else if (nav === 'approval') {
-      setStatusFilter('Awaiting Approval');
-      setPriorityFilter('All');
-    } else if (nav === 'resolved') {
-      setStatusFilter('Resolved');
-      setPriorityFilter('All');
     }
   };
 
@@ -211,13 +212,19 @@ export default function AdminPage() {
 
       // 3. Channel Filter
       if (channelFilter !== 'All') {
-        const itemC = (item.channel || 'Web Portal').toLowerCase();
+        const itemC = (item.channel || '').toLowerCase();
         if (channelFilter === 'WhatsApp' && !itemC.includes('whatsapp')) return false;
-        if (channelFilter === 'Gmail' && !itemC.includes('gmail') && !itemC.includes('email')) return false;
-        if (channelFilter === 'Web Portal' && !itemC.includes('portal') && !itemC.includes('web')) return false;
+        if (channelFilter === 'Email' && !itemC.includes('email') && !itemC.includes('gmail')) return false;
       }
 
-      // 4. Search query
+      // 4. Sidebar Nav Filter Shortcuts
+      if (activeNav === 'escalated') {
+        if ((item.priority || 'P2') !== 'P1' && !item.status?.toLowerCase().includes('escalat')) return false;
+      } else if (activeNav === 'support_esc') {
+        if (!item.status?.toLowerCase().includes('approval') && !item.status?.toLowerCase().includes('customer')) return false;
+      }
+
+      // 5. Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const searchPool = [
@@ -242,1116 +249,1131 @@ export default function AdminPage() {
 
       return true;
     });
-  }, [complaints, statusFilter, priorityFilter, channelFilter, searchQuery]);
+  }, [complaints, statusFilter, priorityFilter, channelFilter, activeNav, searchQuery]);
 
-  // Selected ticket object
+  // Selected Ticket
   const selectedTicket = useMemo(() => {
     return complaints.find(c => c.id === selectedTicketId) || (filteredComplaints.length > 0 ? filteredComplaints[0] : null);
   }, [complaints, selectedTicketId, filteredComplaints]);
 
-  // Statistics counters
-  const stats = useMemo(() => {
-    const total = complaints.length;
-    const openCount = complaints.filter(c => matchesStatus(c.status, 'Open')).length;
-    const p1Count = complaints.filter(c => (c.priority || 'P2') === 'P1').length;
-    const approvalCount = complaints.filter(c => matchesStatus(c.status, 'Awaiting Approval')).length;
-    const resolvedCount = complaints.filter(c => matchesStatus(c.status, 'Resolved') || matchesStatus(c.status, 'Closed')).length;
-    return { total, openCount, p1Count, approvalCount, resolvedCount };
-  }, [complaints]);
+  // Active filters count
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (statusFilter !== 'All') count++;
+    if (priorityFilter !== 'All') count++;
+    if (channelFilter !== 'All') count++;
+    return count;
+  }, [statusFilter, priorityFilter, channelFilter]);
+
+  // Status visual dot & label helper
+  const renderStatusDot = (statusText?: string) => {
+    const s = (statusText || 'Open').toLowerCase();
+    let dotColor = 'bg-blue-500';
+    let label = statusText || 'Open';
+
+    if (s.includes('complete') || s.includes('resolved')) {
+      dotColor = 'bg-emerald-500';
+      label = 'Resolved';
+    } else if (s.includes('approval')) {
+      dotColor = 'bg-amber-500';
+      label = 'Awaiting approval';
+    } else if (s.includes('customer')) {
+      dotColor = 'bg-red-500';
+      label = 'Awaiting customer';
+    } else if (s.includes('escalat')) {
+      dotColor = 'bg-rose-600';
+      label = 'Escalated';
+    } else if (s.includes('closed') || s.includes('invoice')) {
+      dotColor = 'bg-gray-400';
+      label = 'Closed';
+    } else {
+      dotColor = 'bg-blue-500';
+      label = 'Open';
+    }
+
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-gray-600 font-medium">
+        <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
+        <span>{label}</span>
+      </span>
+    );
+  };
 
   // Priority badge helper
-  const getPriorityBadge = (p?: string) => {
+  const renderPriorityBadge = (p?: string) => {
     const priority = p || 'P2';
     switch (priority) {
       case 'P1':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-red-950/80 text-red-400 border border-red-700/50"><Flame className="w-3 h-3" /> P1 Critical</span>;
+        return <span className="px-1.5 py-0.5 rounded text-[11px] font-bold text-red-600 bg-red-50 border border-red-200">P1</span>;
       case 'P2':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-700/50">P2 High</span>;
+        return <span className="px-1.5 py-0.5 rounded text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200">P2</span>;
       case 'P3':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-sky-950/80 text-sky-400 border border-sky-700/50">P3 Medium</span>;
+        return <span className="px-1.5 py-0.5 rounded text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-200">P3</span>;
       case 'P4':
       default:
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-normal bg-slate-800 text-slate-400 border border-slate-700">P4 Low</span>;
+        return <span className="px-1.5 py-0.5 rounded text-[11px] font-medium text-gray-600 bg-gray-100 border border-gray-200">P4</span>;
     }
   };
 
-  // Status badge helper
-  const getStatusBadge = (s?: string) => {
-    const status = s || 'Open';
-    const lower = status.toLowerCase();
-    if (lower.includes('complete') || lower.includes('resolved')) {
-      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-600/40"><CheckCircle2 className="w-3 h-3" /> {status}</span>;
-    }
-    if (lower.includes('approval')) {
-      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-950/80 text-purple-300 border border-purple-600/40"><Clock className="w-3 h-3" /> Awaiting Approval</span>;
-    }
-    if (lower.includes('customer')) {
-      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-950/80 text-blue-300 border border-blue-600/40"><HelpCircle className="w-3 h-3" /> Awaiting Customer</span>;
-    }
-    if (lower.includes('escalat') || lower.includes('repair')) {
-      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-950/80 text-rose-400 border border-rose-600/50"><AlertTriangle className="w-3 h-3" /> Escalated</span>;
-    }
-    if (lower.includes('closed') || lower.includes('invoice')) {
-      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">Closed</span>;
-    }
-    return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-300 border border-amber-600/40"><Clock className="w-3 h-3" /> {status || 'Open'}</span>;
-  };
-
-  // Channel helper
-  const getChannelBadge = (ch?: string) => {
-    const channel = ch || 'Web Portal';
+  // Channel badge helper (Email or WhatsApp with icons)
+  const renderChannelBadge = (ch?: string) => {
+    const channel = ch || 'WhatsApp';
     if (channel.toLowerCase().includes('whatsapp')) {
-      return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400"><MessageCircle className="w-3 h-3 text-emerald-500" /> WhatsApp</span>;
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 font-medium">
+          <svg className="w-3.5 h-3.5 text-emerald-500" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+          </svg>
+          <span>WhatsApp</span>
+        </span>
+      );
     }
-    if (channel.toLowerCase().includes('gmail') || channel.toLowerCase().includes('email')) {
-      return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-400"><Mail className="w-3 h-3 text-red-500" /> Gmail</span>;
-    }
-    return <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400"><Shield className="w-3 h-3 text-cyan-400" /> Portal</span>;
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 font-medium">
+        <svg className="w-3.5 h-3.5 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+        </svg>
+        <span>Email</span>
+      </span>
+    );
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#030712] text-slate-100 font-sans">
-      
+    <div className="flex h-screen w-screen overflow-hidden bg-white text-gray-800 font-sans">
+
       {/* ======================================================== */}
-      {/* 1. LEFT NAVIGATION SIDEBAR                               */}
+      {/* 1. LEFT SIDEBAR: Deep Plum/Wine theme (Matching Image 1)  */}
       {/* ======================================================== */}
-      <aside className="w-64 flex-shrink-0 bg-[#070d1e] border-r border-white/10 flex flex-col justify-between select-none">
-        <div>
-          {/* Logo & App Title */}
-          <div className="p-5 border-b border-white/10 flex items-center gap-3">
-            <div className="relative flex items-center justify-center p-2 rounded-lg bg-gradient-to-br from-red-600/20 to-slate-900 border border-red-500/30">
-              <img 
-                src="https://digitechhms.net/static/img/digitech-logo-light.png" 
-                alt="Digitech HMS Logo" 
-                className="h-7 w-auto object-contain" 
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm tracking-wide text-white">Digitech HMS</span>
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-red-500/20 text-red-400 border border-red-500/30">v2.4</span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium">Service Desk Console</p>
-            </div>
+      <aside className="w-60 flex-shrink-0 bg-[#160826] text-white flex flex-col justify-between select-none border-r border-[#2d124d]">
+        <div className="p-4 space-y-4">
+          
+          {/* Logo with Name */}
+          <div className="py-1">
+            <DigitechLogo />
           </div>
 
-          {/* Telemetry Status Bar */}
-          <div className="px-5 py-2.5 bg-black/30 border-b border-white/5 flex items-center justify-between text-[11px]">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-slate-300 font-medium">HMS Cloud Live</span>
-            </div>
-            <span className="font-mono text-[10px] text-slate-500">24x7 Active</span>
+          {/* Org Selector / Subtitle */}
+          <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300">
+            <span className="font-medium truncate">Digitech Operations</span>
+            <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
           </div>
 
-          {/* Navigation Section */}
-          <div className="p-3 space-y-1">
-            <div className="px-3 py-2 text-[10px] uppercase font-bold tracking-wider text-slate-400">
-              Operations Hub
-            </div>
+          {/* "+ Compose" Button (Matching Image 1 in Crimson) */}
+          <a
+            href="/support"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-2.5 px-4 rounded-full bg-gradient-to-r from-[#e11d48] to-[#be123c] hover:from-[#be123c] hover:to-[#9f1239] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-950/40 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>+ Compose</span>
+          </a>
 
-            {/* Primary Inbox Option (Requested by user) */}
+          {/* Navigation Menu (Matching Image 1 options) */}
+          <nav className="space-y-0.5 pt-2 text-xs">
             <button
-              onClick={() => handleNavClick('inbox')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                activeNav === 'inbox' 
-                  ? 'bg-red-600 text-white shadow-lg shadow-red-900/40' 
-                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              onClick={() => setActiveNav('overview')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${
+                activeNav === 'overview' ? 'bg-white/15 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <Inbox className="w-4 h-4" />
+              <LayoutDashboard className="w-4 h-4 text-gray-400" />
+              <span>Overview</span>
+            </button>
+
+            {/* Inbox with Badge */}
+            <button
+              onClick={() => {
+                setActiveNav('inbox');
+                setStatusFilter('All');
+                setPriorityFilter('All');
+                setChannelFilter('All');
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-semibold transition-colors ${
+                activeNav === 'inbox' ? 'bg-[#2a0e4a] text-white font-bold' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Inbox className="w-4 h-4 text-rose-400" />
                 <span>Inbox</span>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-bold ${
-                activeNav === 'inbox' ? 'bg-black/30 text-white' : 'bg-red-500/20 text-red-400 border border-red-500/30'
-              }`}>
-                {stats.openCount}
+              <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-[#be123c] text-white">
+                {complaints.length}
               </span>
             </button>
 
-            {/* All Complaints */}
             <button
-              onClick={() => handleNavClick('all')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                activeNav === 'all' 
-                  ? 'bg-white/10 text-white' 
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
+              onClick={() => setActiveNav('activity')}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-medium transition-colors ${
+                activeNav === 'activity' ? 'bg-white/15 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <Layers className="w-4 h-4" />
-                <span>All Complaints</span>
+              <div className="flex items-center gap-3">
+                <Zap className="w-4 h-4 text-gray-400" />
+                <span>Activity</span>
               </div>
-              <span className="text-[11px] font-mono text-slate-400">{stats.total}</span>
-            </button>
-
-            {/* Escalated P1 */}
-            <button
-              onClick={() => handleNavClick('escalated')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                activeNav === 'escalated' 
-                  ? 'bg-rose-950/80 text-rose-300 border border-rose-600/40' 
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Flame className="w-4 h-4 text-red-500" />
-                <span>Escalated (P1)</span>
-              </div>
-              {stats.p1Count > 0 && (
-                <span className="px-1.5 py-0.2 rounded bg-red-600 text-white text-[10px] font-bold">
-                  {stats.p1Count}
-                </span>
-              )}
-            </button>
-
-            {/* Awaiting Approval */}
-            <button
-              onClick={() => handleNavClick('approval')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                activeNav === 'approval' 
-                  ? 'bg-white/10 text-white' 
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Clock className="w-4 h-4 text-purple-400" />
-                <span>Awaiting Approval</span>
-              </div>
-              <span className="text-[11px] font-mono text-slate-400">{stats.approvalCount}</span>
-            </button>
-
-            {/* Resolved / Closed */}
-            <button
-              onClick={() => handleNavClick('resolved')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                activeNav === 'resolved' 
-                  ? 'bg-white/10 text-white' 
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <CheckCircle className="w-4 h-4 text-emerald-400" />
-                <span>Resolved & Closed</span>
-              </div>
-              <span className="text-[11px] font-mono text-slate-400">{stats.resolvedCount}</span>
-            </button>
-          </div>
-
-          {/* ======================================================== */}
-          {/* SUPPORT CHANNELS PANEL (WhatsApp & Gmail as requested)   */}
-          {/* ======================================================== */}
-          <div className="p-3 mx-3 mt-4 rounded-xl bg-slate-900/60 border border-white/5 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Support Channels</span>
-              <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-            </div>
-
-            {/* WhatsApp Link */}
-            <a 
-              href="https://wa.me/919999760222?text=Hello%20Digitech%20HMS%20Helpdesk%2C%20I%20have%20an%20inquiry%20regarding%20complaints." 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center justify-between p-2 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-600/30 text-emerald-300 transition-all group"
-              title="Open WhatsApp Helpdesk (9999760222)"
-            >
-              <div className="flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-emerald-400" />
-                <div>
-                  <div className="text-[11px] font-bold text-white leading-tight">WhatsApp Hotline</div>
-                  <div className="text-[10px] text-emerald-400 font-mono">9999760222</div>
-                </div>
-              </div>
-              <ArrowUpRight className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-transform" />
-            </a>
-
-            {/* Gmail Link */}
-            <a 
-              href="mailto:vineet@digitechservices.net?subject=Digitech%20HMS%20Service%20Ticket" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center justify-between p-2 rounded-lg bg-red-950/40 hover:bg-red-900/60 border border-red-600/30 text-red-300 transition-all group"
-              title="Send Email to vineet@digitechservices.net"
-            >
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-red-400" />
-                <div className="overflow-hidden">
-                  <div className="text-[11px] font-bold text-white leading-tight">Support Email</div>
-                  <div className="text-[10px] text-red-300 truncate max-w-[120px]">vineet@digitech...</div>
-                </div>
-              </div>
-              <ArrowUpRight className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-transform" />
-            </a>
-
-            {/* Client Registration Portal Link */}
-            <a 
-              href="/support" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all"
-            >
-              <span className="flex items-center gap-1.5">
-                <ExternalLink className="w-3 h-3 text-cyan-400" /> Client Portal (/support)
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-white/10 text-gray-300">
+                {complaints.length}
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">Open</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveNav('escalated');
+                setPriorityFilter('P1');
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${
+                activeNav === 'escalated' ? 'bg-white/15 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Wrench className="w-4 h-4 text-gray-400" />
+              <span>Tech Escalations</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveNav('support_esc');
+                setStatusFilter('Awaiting approval');
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${
+                activeNav === 'support_esc' ? 'bg-white/15 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <LifeBuoy className="w-4 h-4 text-gray-400" />
+              <span>Support Escalations</span>
+            </button>
+
+            <a
+              href="/support"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
+            >
+              <ExternalLink className="w-4 h-4 text-gray-400" />
+              <span>Client Portal</span>
             </a>
-          </div>
+          </nav>
         </div>
 
-        {/* Sidebar Footer User Info */}
-        <div className="p-4 border-t border-white/10 bg-black/20 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-red-950">
-              DH
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-bold text-white truncate">Digitech Admin Desk</p>
-              <p className="text-[10px] text-slate-400 truncate">vineet@digitechservices.net</p>
-            </div>
+        {/* Sidebar Footer: Channels Details (9999760222 & vineet@digitechservices.net) */}
+        <div className="p-3 m-3 rounded-xl bg-black/40 border border-white/10 space-y-2 text-xs">
+          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+            Connected Channels
           </div>
+          <a
+            href="https://wa.me/919999760222"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 text-[11px]"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span className="font-mono">WhatsApp: 9999760222</span>
+          </a>
+          <a
+            href="mailto:vineet@digitechservices.net"
+            className="flex items-center gap-2 text-rose-300 hover:text-rose-200 text-[11px] truncate"
+          >
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span className="truncate">vineet@digitechservices.net</span>
+          </a>
         </div>
       </aside>
 
       {/* ======================================================== */}
-      {/* 2. MAIN WORKSPACE AREA                                   */}
+      {/* 2. INBOX FEED COLUMN (Center Column Matching Image 1)    */}
       {/* ======================================================== */}
-      <main className="flex-1 flex flex-col min-w-0 bg-[#020617] overflow-hidden">
+      <div className="w-[340px] lg:w-[380px] flex-shrink-0 flex flex-col border-r border-gray-200 bg-white">
         
-        {/* Top Header Bar */}
-        <header className="h-16 flex-shrink-0 border-b border-white/10 bg-[#070d1e]/90 backdrop-blur-md px-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-base font-bold text-white flex items-center gap-2">
-                <span>Complaint Management Inbox</span>
-                <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 text-slate-400 border border-white/10 font-mono">
-                  {filteredComplaints.length} tickets
-                </span>
-              </h1>
-              <p className="text-[11px] text-slate-400">Review client requests, assign engineers, and update ticket progress</p>
-            </div>
+        {/* Inbox Header with Badge and Filter Funnel Icon */}
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Inbox</h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#be123c] text-white">
+              {filteredComplaints.length}
+            </span>
           </div>
 
-          {/* Search, Views & Refresh Controls */}
-          <div className="flex items-center gap-3">
-            {/* Search Bar */}
-            <div className="relative w-64 md:w-80">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search ticket #, client, phone, engineer..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-[#0a0f1d] border border-white/10 rounded-lg pl-9 pr-8 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500/80 focus:ring-1 focus:ring-red-500/80 transition-all"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-2.5 text-slate-500 hover:text-white">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* View Mode Toggle: Inbox Card vs Full Grid */}
-            <div className="flex items-center p-1 bg-black/40 border border-white/10 rounded-lg">
-              <button
-                onClick={() => setViewMode('inbox')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-all ${
-                  viewMode === 'inbox' 
-                    ? 'bg-red-600 text-white shadow' 
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Modern Inbox / Split Workspace View"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Inbox View</span>
-              </button>
-              <button
-                onClick={() => setViewMode('table')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-all ${
-                  viewMode === 'table' 
-                    ? 'bg-red-600 text-white shadow' 
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Full Grid View (Step 1 & Step 2 Side-by-Side)"
-              >
-                <Table className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Spreadsheet Grid</span>
-              </button>
-            </div>
+          <div className="flex items-center gap-1.5">
+            {/* View Mode Toggle: Card vs Full Grid */}
+            <button
+              onClick={() => setViewMode(viewMode === 'inbox' ? 'table' : 'inbox')}
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              title="Toggle Spreadsheet Grid"
+            >
+              {viewMode === 'inbox' ? <Table className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
+            </button>
 
             {/* Refresh Button */}
             <button
               onClick={() => fetchComplaints(true)}
               disabled={isRefreshing}
-              className="p-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all disabled:opacity-50"
-              title="Refresh Data from Cloud"
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              title="Refresh Complaints"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-red-400' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-red-500' : ''}`} />
+            </button>
+
+            {/* FILTER BUTTON WITH FUNNEL ICON (Matching Image 1) */}
+            <button
+              onClick={() => setIsFilterModalOpen(true)}
+              className={`p-2 rounded-lg transition-all relative ${
+                activeFiltersCount > 0 
+                  ? 'bg-rose-50 text-rose-600 border border-rose-200' 
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+              title="Open Filters"
+            >
+              <Filter className="w-4 h-4" />
+              {activeFiltersCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
             </button>
           </div>
-        </header>
+        </div>
 
-        {/* ======================================================== */}
-        {/* 3. MULTI-LEVEL FILTER SYSTEM (Requested by user)          */}
-        {/* ======================================================== */}
-        <section className="px-6 py-3 border-b border-white/10 bg-[#050b18] flex flex-wrap items-center justify-between gap-3 text-xs select-none">
-          <div className="flex flex-wrap items-center gap-3">
-            
-            {/* Filter 1: Status Filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                <SlidersHorizontal className="w-3 h-3 text-red-500" /> Status:
-              </span>
-              <div className="flex items-center gap-1 overflow-x-auto py-0.5">
-                {[
-                  'All',
-                  'Open',
-                  'Awaiting Approval',
-                  'Awaiting Customer',
-                  'Escalated',
-                  'Resolved',
-                  'Closed'
-                ].map(st => (
-                  <button
-                    key={st}
-                    onClick={() => setStatusFilter(st)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                      statusFilter === st 
-                        ? 'bg-red-600 text-white font-semibold shadow-sm' 
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="h-4 w-px bg-white/10 hidden md:block"></div>
-
-            {/* Filter 2: Priority Filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                <Tag className="w-3 h-3 text-amber-500" /> Priority:
-              </span>
-              <div className="flex items-center gap-1">
-                {['All', 'P1', 'P2', 'P3', 'P4'].map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPriorityFilter(p)}
-                    className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${
-                      priorityFilter === p 
-                        ? p === 'P1' ? 'bg-red-600 text-white' :
-                          p === 'P2' ? 'bg-amber-600 text-white' :
-                          p === 'P3' ? 'bg-sky-600 text-white' :
-                          p === 'P4' ? 'bg-slate-700 text-white' :
-                          'bg-white/20 text-white'
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="h-4 w-px bg-white/10 hidden md:block"></div>
-
-            {/* Filter 3: Channel Filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                <MessageSquare className="w-3 h-3 text-emerald-400" /> Channel:
-              </span>
-              <div className="flex items-center gap-1">
-                {['All', 'WhatsApp', 'Gmail', 'Web Portal'].map(ch => (
-                  <button
-                    key={ch}
-                    onClick={() => setChannelFilter(ch)}
-                    className={`px-2 py-1 rounded-md text-xs font-medium transition-all ${
-                      channelFilter === ch 
-                        ? 'bg-emerald-600 text-white font-semibold' 
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
-                    }`}
-                  >
-                    {ch}
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/* Search Conversations Input */}
+        <div className="px-4 pt-3 pb-2">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:bg-white transition-all"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
+        </div>
 
-          {/* Reset Filters Option if any active */}
-          {(statusFilter !== 'All' || priorityFilter !== 'All' || channelFilter !== 'All' || searchQuery) && (
+        {/* Channel Dropdown Filter */}
+        <div className="px-4 pb-3">
+          <div className="relative">
+            <select
+              value={channelFilter}
+              onChange={e => setChannelFilter(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-700 font-medium appearance-none focus:outline-none focus:ring-1 focus:ring-rose-500 pr-8 cursor-pointer"
+            >
+              <option value="All">Channel: All channels</option>
+              <option value="Email">Channel: Email (Gmail)</option>
+              <option value="WhatsApp">Channel: WhatsApp</option>
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-2.5 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Active Filter Tags Indicator */}
+        {(statusFilter !== 'All' || priorityFilter !== 'All' || channelFilter !== 'All') && (
+          <div className="px-4 py-2 bg-gray-50 border-t border-b border-gray-100 flex items-center justify-between text-[11px]">
+            <div className="flex items-center gap-1.5 overflow-hidden">
+              <span className="text-gray-500 font-medium">Filters:</span>
+              <span className="font-semibold text-rose-600 truncate">
+                {[statusFilter !== 'All' && statusFilter, priorityFilter !== 'All' && priorityFilter, channelFilter !== 'All' && channelFilter].filter(Boolean).join(' • ')}
+              </span>
+            </div>
             <button
               onClick={() => {
                 setStatusFilter('All');
                 setPriorityFilter('All');
                 setChannelFilter('All');
-                setSearchQuery('');
               }}
-              className="text-xs text-red-400 hover:text-red-300 underline font-medium flex items-center gap-1"
+              className="text-gray-400 hover:text-rose-600 text-[11px] font-bold underline"
             >
-              <X className="w-3 h-3" /> Clear Filters
+              Clear
             </button>
-          )}
-        </section>
+          </div>
+        )}
 
-        {/* ======================================================== */}
-        {/* 4. WORKSPACE CONTENT: INBOX SPLIT VIEW OR TABLE VIEW      */}
-        {/* ======================================================== */}
-        <div className="flex-1 overflow-hidden relative">
-          
+        {/* Conversation / Complaint Cards List (Matching Image 1 card styling) */}
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
           {loading ? (
-            <div className="h-full w-full flex flex-col items-center justify-center gap-3 text-slate-400">
-              <RefreshCw className="w-8 h-8 animate-spin text-red-500" />
-              <p className="text-sm font-medium">Loading complaints database...</p>
+            <div className="p-8 text-center text-gray-400 text-xs flex flex-col items-center gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-rose-500" />
+              <span>Loading conversations...</span>
             </div>
           ) : filteredComplaints.length === 0 ? (
-            <div className="h-full w-full flex flex-col items-center justify-center p-8 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 text-slate-500">
-                <Inbox className="w-8 h-8" />
+            <div className="p-8 text-center text-gray-400 text-xs">
+              <Inbox className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="font-medium text-gray-600">No conversations found</p>
+              <p className="text-[11px] text-gray-400 mt-1">Try resetting the status or channel filter.</p>
+            </div>
+          ) : (
+            filteredComplaints.map(item => {
+              const isSelected = selectedTicket?.id === item.id;
+              const isUnresolved = !item.status?.toLowerCase().includes('complete') && !item.status?.toLowerCase().includes('closed');
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setSelectedTicketId(item.id)}
+                  className={`p-3.5 cursor-pointer transition-all ${
+                    isSelected ? 'bg-slate-50 border-l-4 border-l-[#be123c]' : 'hover:bg-gray-50/80 border-l-4 border-l-transparent'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      {/* Red unread / active dot as in Image 1 */}
+                      {isUnresolved && (
+                        <span className="w-2 h-2 rounded-full bg-red-500 inline-block flex-shrink-0"></span>
+                      )}
+                      <span className="text-xs font-bold text-gray-900 truncate">
+                        {item.clientName || 'Demo Client'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-gray-400 font-mono flex-shrink-0">
+                      {item.date || 'Today'}
+                    </span>
+                  </div>
+
+                  {/* Problem Snippet */}
+                  <p className="text-xs text-gray-500 line-clamp-2 mb-2 font-normal leading-relaxed">
+                    {item.problem || 'No description provided.'}
+                  </p>
+
+                  {/* Tags row: Priority, Channel, Status (Matching Image 1) */}
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <div className="flex items-center gap-2">
+                      {renderPriorityBadge(item.priority)}
+                      {renderChannelBadge(item.channel)}
+                    </div>
+                    {renderStatusDot(item.status)}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 3. RIGHT WORKSPACE / DETAIL PANEL                        */}
+      {/* ======================================================== */}
+      <div className="flex-1 flex flex-col bg-[#fcfcfd] overflow-hidden">
+        {viewMode === 'table' ? (
+          
+          // Full Spreadsheet Grid View
+          <div className="h-full w-full overflow-auto p-4 bg-gray-100">
+            <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+              <table className="w-full text-xs text-left whitespace-nowrap">
+                <thead>
+                  <tr>
+                    <th colSpan={10} className="bg-amber-100 text-amber-900 border-b border-r border-amber-200 py-2 px-3 text-center font-bold">
+                      STEP -01- (Client Call Registration Details)
+                    </th>
+                    <th colSpan={14} className="bg-emerald-100 text-emerald-900 border-b border-emerald-200 py-2 px-3 text-center font-bold">
+                      STEP -02- (Engineer Assignment & Resolution Status)
+                    </th>
+                  </tr>
+                  <tr className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
+                    <th className="py-2 px-3 border-r">S.No</th>
+                    <th className="py-2 px-3 border-r">Date</th>
+                    <th className="py-2 px-3 border-r">Type</th>
+                    <th className="py-2 px-3 border-r">Ticket No</th>
+                    <th className="py-2 px-3 border-r">Priority</th>
+                    <th className="py-2 px-3 border-r">Client Name</th>
+                    <th className="py-2 px-3 border-r">Email</th>
+                    <th className="py-2 px-3 border-r">Address</th>
+                    <th className="py-2 px-3 border-r">Contact Person</th>
+                    <th className="py-2 px-3 border-r">Contact Number</th>
+                    <th className="py-2 px-3 border-r">Assigned Date</th>
+                    <th className="py-2 px-3 border-r">Engineer 01</th>
+                    <th className="py-2 px-3 border-r">Engineer 02</th>
+                    <th className="py-2 px-3 border-r">Finding</th>
+                    <th className="py-2 px-3 border-r">Action Taken</th>
+                    <th className="py-2 px-3 border-r">Used Material</th>
+                    <th className="py-2 px-3 border-r">Remarks</th>
+                    <th className="py-2 px-3 border-r">Status</th>
+                    <th className="py-2 px-3 border-r">Final Status</th>
+                    <th className="py-2 px-3 text-center">Save</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredComplaints.map((item, idx) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="py-2 px-3 border-r text-gray-500">{idx + 1}</td>
+                      <td className="py-2 px-3 border-r text-gray-700">{item.date}</td>
+                      <td className="py-2 px-3 border-r">{item.complaintType}</td>
+                      <td className="py-2 px-3 border-r font-mono font-bold text-blue-600">{item.ticketNo}</td>
+                      <td className="py-2 px-3 border-r">{renderPriorityBadge(item.priority)}</td>
+                      <td className="py-2 px-3 border-r font-semibold">{item.clientName}</td>
+                      <td className="py-2 px-3 border-r">{item.clientEmail}</td>
+                      <td className="py-2 px-3 border-r truncate max-w-[140px]">{item.address}</td>
+                      <td className="py-2 px-3 border-r">{item.contactPerson}</td>
+                      <td className="py-2 px-3 border-r">{item.contactNumber}</td>
+                      <td className="py-1 px-2 border-r">
+                        <input type="date" className="border rounded p-1 text-xs" value={item.assignedDate || ''} onChange={e => updateComplaint(item.id, 'assignedDate', e.target.value)} />
+                      </td>
+                      <td className="py-1 px-2 border-r">
+                        <select className="border rounded p-1 text-xs" value={item.engineer1 || ''} onChange={e => updateComplaint(item.id, 'engineer1', e.target.value)}>
+                          <option value="">Select</option>
+                          <option>Abdul</option>
+                          <option>Sharukh</option>
+                          <option>Govind</option>
+                          <option>Himanshu</option>
+                          <option>Ashish</option>
+                          <option>Zubair</option>
+                          <option>Other</option>
+                        </select>
+                      </td>
+                      <td className="py-1 px-2 border-r">
+                        <select className="border rounded p-1 text-xs" value={item.engineer2 || ''} onChange={e => updateComplaint(item.id, 'engineer2', e.target.value)}>
+                          <option value="">Select</option>
+                          <option>Abdul</option>
+                          <option>Sharukh</option>
+                          <option>Govind</option>
+                          <option>Himanshu</option>
+                          <option>Ashish</option>
+                          <option>Zubair</option>
+                          <option>Other</option>
+                        </select>
+                      </td>
+                      <td className="py-1 px-2 border-r">
+                        <input type="text" placeholder="Finding..." className="border rounded p-1 text-xs w-24" value={item.finding || ''} onChange={e => updateComplaint(item.id, 'finding', e.target.value)} />
+                      </td>
+                      <td className="py-1 px-2 border-r">
+                        <input type="text" placeholder="Action..." className="border rounded p-1 text-xs w-24" value={item.actionTaken || ''} onChange={e => updateComplaint(item.id, 'actionTaken', e.target.value)} />
+                      </td>
+                      <td className="py-1 px-2 border-r">
+                        <input type="text" placeholder="Used..." className="border rounded p-1 text-xs w-20" value={item.usedMaterial || ''} onChange={e => updateComplaint(item.id, 'usedMaterial', e.target.value)} />
+                      </td>
+                      <td className="py-1 px-2 border-r">
+                        <select className="border rounded p-1 text-xs" value={item.remarks || ''} onChange={e => updateComplaint(item.id, 'remarks', e.target.value)}>
+                          <option value="">Select</option>
+                          <option>U/W</option>
+                          <option>U/AMC</option>
+                          <option>Chargeable</option>
+                        </select>
+                      </td>
+                      <td className="py-1 px-2 border-r">
+                        <select className="border rounded p-1 text-xs" value={item.status || 'Open'} onChange={e => updateComplaint(item.id, 'status', e.target.value)}>
+                          <option value="Open">Open</option>
+                          <option value="Awaiting approval">Awaiting approval</option>
+                          <option value="Awaiting customer">Awaiting customer</option>
+                          <option value="Escalated">Escalated</option>
+                          <option value="Resolved">Resolved</option>
+                          <option value="Closed">Closed</option>
+                        </select>
+                      </td>
+                      <td className="py-1 px-2 border-r">
+                        <select className="border rounded p-1 text-xs" value={item.finalStatus || ''} onChange={e => updateComplaint(item.id, 'finalStatus', e.target.value)}>
+                          <option value="">Final Status</option>
+                          <option>Complete</option>
+                          <option>Quotation sent</option>
+                          <option>Invoice raise</option>
+                        </select>
+                      </td>
+                      <td className="py-1 px-3 text-center">
+                        <button onClick={() => saveComplaint(item.id)} className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1 px-3 rounded text-xs">
+                          Save
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        ) : !selectedTicket ? (
+          
+          // Empty State Matching Image 1
+          <div className="h-full flex flex-col items-center justify-center p-8 text-center select-none">
+            <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 mb-4 border border-gray-200">
+              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <h2 className="text-base font-bold text-gray-800 mb-1">Select a conversation</h2>
+            <p className="text-xs text-gray-500">Choose from the queue to begin</p>
+          </div>
+
+        ) : (
+
+          // Full Ticket Management Workspace
+          <div className="h-full flex flex-col overflow-y-auto">
+            
+            {/* Top Workspace Bar */}
+            <div className="p-6 border-b border-gray-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2.5 mb-1">
+                  <span className="font-mono text-xs font-bold text-blue-600 px-2 py-0.5 rounded bg-blue-50 border border-blue-200">
+                    {selectedTicket.ticketNo || `TKT-${selectedTicket.id}`}
+                  </span>
+                  {renderPriorityBadge(selectedTicket.priority)}
+                  {renderStatusDot(selectedTicket.status)}
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">{selectedTicket.clientName}</h2>
+                <p className="text-xs text-gray-500">
+                  Registered on {selectedTicket.date} &bull; Type: <span className="font-medium text-gray-800">{selectedTicket.complaintType || 'CCTV'}</span>
+                </p>
               </div>
-              <h3 className="text-base font-bold text-white mb-1">No complaints found</h3>
-              <p className="text-xs text-slate-400 max-w-sm mb-4">
-                No tickets matched your current filter criteria. Try adjusting the status, priority, or search query.
-              </p>
+
+              {/* Action Buttons: WhatsApp, Email, Save */}
+              <div className="flex items-center gap-2">
+                {selectedTicket.contactNumber && (
+                  <a
+                    href={`https://wa.me/91${selectedTicket.contactNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                      `Hello ${selectedTicket.clientName}, this is Digitech HMS regarding your complaint ${selectedTicket.ticketNo} (${selectedTicket.problem}).`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+                  >
+                    <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                    </svg>
+                    <span>WhatsApp</span>
+                  </a>
+                )}
+
+                <a
+                  href={`mailto:${selectedTicket.clientEmail || 'vineet@digitechservices.net'}?cc=vineet@digitechservices.net&subject=Digitech%20HMS%20Update%20Ticket%20${selectedTicket.ticketNo}`}
+                  className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+                >
+                  <Mail className="w-3.5 h-3.5 text-red-500" />
+                  <span>Email</span>
+                </a>
+
+                <button
+                  onClick={() => saveComplaint(selectedTicket.id)}
+                  disabled={saveStatus.saving && saveStatus.id === selectedTicket.id}
+                  className="px-4 py-1.5 rounded-lg bg-[#be123c] hover:bg-[#9f1239] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Notification message */}
+            {saveStatus.message && saveStatus.id === selectedTicket.id && (
+              <div className="mx-6 mt-4 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>{saveStatus.message}</span>
+              </div>
+            )}
+
+            {/* Form Panels: Step 1 (Client Record) & Step 2 (Engineer Resolution) */}
+            <div className="p-6 space-y-6">
+              
+              {/* Step 1: Client Information */}
+              <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-800 font-bold text-xs flex items-center justify-center">
+                      1
+                    </span>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                      Client Call Registration Details
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-gray-400">Step -01-</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                  <div>
+                    <label className="text-gray-500 block mb-1">Client Name</label>
+                    <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-900 font-semibold">
+                      {selectedTicket.clientName || 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-500 block mb-1">Email Address</label>
+                    <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 truncate">
+                      {selectedTicket.clientEmail || 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-500 block mb-1">Contact Person</label>
+                    <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800">
+                      {selectedTicket.contactPerson || 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-gray-500 block mb-1">Contact Phone</label>
+                    <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 font-mono">
+                      {selectedTicket.contactNumber || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  <div className="md:col-span-1">
+                    <label className="text-gray-500 block mb-1">Site Address</label>
+                    <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 flex items-start gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+                      <span>{selectedTicket.address || 'N/A'}</span>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-gray-500 block mb-1">Problem / Complaint</label>
+                    <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 leading-relaxed min-h-[60px]">
+                      {selectedTicket.problem || 'No description provided.'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2: Engineer Assignment & Action */}
+              <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center">
+                      2
+                    </span>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                      Engineer Assignment & Attend Status
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-gray-400">Step -02-</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Priority</label>
+                    <select
+                      value={selectedTicket.priority || 'P2'}
+                      onChange={e => updateComplaint(selectedTicket.id, 'priority', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    >
+                      <option value="P1">P1 - Critical</option>
+                      <option value="P2">P2 - High</option>
+                      <option value="P3">P3 - Medium</option>
+                      <option value="P4">P4 - Low</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Status</label>
+                    <select
+                      value={selectedTicket.status || 'Open'}
+                      onChange={e => updateComplaint(selectedTicket.id, 'status', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    >
+                      <option value="Open">Open</option>
+                      <option value="Awaiting approval">Awaiting approval</option>
+                      <option value="Awaiting customer">Awaiting customer</option>
+                      <option value="Escalated">Escalated</option>
+                      <option value="Under observation">Under observation</option>
+                      <option value="Resolved">Resolved</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Assigned Date</label>
+                    <input
+                      type="date"
+                      value={selectedTicket.assignedDate || ''}
+                      onChange={e => updateComplaint(selectedTicket.id, 'assignedDate', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Final Status</label>
+                    <select
+                      value={selectedTicket.finalStatus || ''}
+                      onChange={e => updateComplaint(selectedTicket.id, 'finalStatus', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    >
+                      <option value="">Select Final Status</option>
+                      <option value="Complete">Complete</option>
+                      <option value="Quotation sent">Quotation sent</option>
+                      <option value="Invoice raise">Invoice raise</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Engineer 01</label>
+                    <select
+                      value={selectedTicket.engineer1 || ''}
+                      onChange={e => updateComplaint(selectedTicket.id, 'engineer1', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    >
+                      <option value="">Select Engineer</option>
+                      <option>Abdul</option>
+                      <option>Sharukh</option>
+                      <option>Govind</option>
+                      <option>Himanshu</option>
+                      <option>Ashish</option>
+                      <option>Zubair</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Engineer 02</label>
+                    <select
+                      value={selectedTicket.engineer2 || ''}
+                      onChange={e => updateComplaint(selectedTicket.id, 'engineer2', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    >
+                      <option value="">Select Engineer</option>
+                      <option>Abdul</option>
+                      <option>Sharukh</option>
+                      <option>Govind</option>
+                      <option>Himanshu</option>
+                      <option>Ashish</option>
+                      <option>Zubair</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Remarks</label>
+                    <select
+                      value={selectedTicket.remarks || ''}
+                      onChange={e => updateComplaint(selectedTicket.id, 'remarks', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    >
+                      <option value="">Select</option>
+                      <option>U/W</option>
+                      <option>U/AMC</option>
+                      <option>Chargeable</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Rectification Type</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Hardware replacement"
+                      value={selectedTicket.rectificationType || ''}
+                      onChange={e => updateComplaint(selectedTicket.id, 'rectificationType', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Finding / Observation / Reason</label>
+                    <input
+                      type="text"
+                      placeholder="Findings..."
+                      value={selectedTicket.finding || ''}
+                      onChange={e => updateComplaint(selectedTicket.id, 'finding', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Solution Provided / Action Taken</label>
+                    <input
+                      type="text"
+                      placeholder="Actions taken..."
+                      value={selectedTicket.actionTaken || ''}
+                      onChange={e => updateComplaint(selectedTicket.id, 'actionTaken', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Used Material</label>
+                    <input
+                      type="text"
+                      placeholder="Material used during servicing..."
+                      value={selectedTicket.usedMaterial || ''}
+                      onChange={e => updateComplaint(selectedTicket.id, 'usedMaterial', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-600 font-medium block mb-1">Required Material</label>
+                    <input
+                      type="text"
+                      placeholder="Spare parts required for next visit..."
+                      value={selectedTicket.requiredMaterial || ''}
+                      onChange={e => updateComplaint(selectedTicket.id, 'requiredMaterial', e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={() => saveComplaint(selectedTicket.id)}
+                    disabled={saveStatus.saving && saveStatus.id === selectedTicket.id}
+                    className="px-6 py-2 rounded-lg bg-[#be123c] hover:bg-[#9f1239] text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Save Changes</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ======================================================== */}
+      {/* 4. FILTERS MODAL (Matching Image 2 uploaded by user)     */}
+      {/* ======================================================== */}
+      {isFilterModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 tracking-tight">Filters</h2>
+              <button
+                onClick={() => setIsFilterModalOpen(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-6 max-h-[75vh] overflow-y-auto">
+              
+              {/* SECTION 1: STATUS (Matching Image 2 with colored dots) */}
+              <div>
+                <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+                  STATUS
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {/* All */}
+                  <button
+                    onClick={() => setStatusFilter('All')}
+                    className={`px-3 py-1.5 rounded-full font-medium transition-all ${
+                      statusFilter === 'All'
+                        ? 'bg-rose-50 text-rose-600 border border-rose-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    All
+                  </button>
+
+                  {/* Open (Blue dot) */}
+                  <button
+                    onClick={() => setStatusFilter('Open')}
+                    className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      statusFilter === 'Open'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                    <span>Open</span>
+                  </button>
+
+                  {/* Awaiting approval (Orange dot) */}
+                  <button
+                    onClick={() => setStatusFilter('Awaiting approval')}
+                    className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      statusFilter === 'Awaiting approval'
+                        ? 'bg-amber-50 text-amber-700 border border-amber-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span>Awaiting approval</span>
+                  </button>
+
+                  {/* Awaiting customer (Red dot) */}
+                  <button
+                    onClick={() => setStatusFilter('Awaiting customer')}
+                    className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      statusFilter === 'Awaiting customer'
+                        ? 'bg-red-50 text-red-700 border border-red-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                    <span>Awaiting customer</span>
+                  </button>
+
+                  {/* Escalated (Crimson dot) */}
+                  <button
+                    onClick={() => setStatusFilter('Escalated')}
+                    className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      statusFilter === 'Escalated'
+                        ? 'bg-rose-50 text-rose-700 border border-rose-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                    <span>Escalated</span>
+                  </button>
+
+                  {/* Resolved (Green dot) */}
+                  <button
+                    onClick={() => setStatusFilter('Resolved')}
+                    className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      statusFilter === 'Resolved'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Resolved</span>
+                  </button>
+
+                  {/* Closed (Gray dot) */}
+                  <button
+                    onClick={() => setStatusFilter('Closed')}
+                    className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      statusFilter === 'Closed'
+                        ? 'bg-gray-100 text-gray-800 border border-gray-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                    <span>Closed</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SECTION 2: PRIORITY (Matching Image 2 with colored dots) */}
+              <div>
+                <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+                  PRIORITY
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <button
+                    onClick={() => setPriorityFilter('All')}
+                    className={`px-3.5 py-1.5 rounded-full font-medium transition-all ${
+                      priorityFilter === 'All'
+                        ? 'bg-rose-50 text-rose-600 border border-rose-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    All
+                  </button>
+
+                  <button
+                    onClick={() => setPriorityFilter('P1')}
+                    className={`px-3.5 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      priorityFilter === 'P1'
+                        ? 'bg-red-50 text-red-700 border border-red-300 font-bold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                    <span>P1</span>
+                  </button>
+
+                  <button
+                    onClick={() => setPriorityFilter('P2')}
+                    className={`px-3.5 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      priorityFilter === 'P2'
+                        ? 'bg-amber-50 text-amber-700 border border-amber-300 font-bold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span>P2</span>
+                  </button>
+
+                  <button
+                    onClick={() => setPriorityFilter('P3')}
+                    className={`px-3.5 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      priorityFilter === 'P3'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-300 font-bold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                    <span>P3</span>
+                  </button>
+
+                  <button
+                    onClick={() => setPriorityFilter('P4')}
+                    className={`px-3.5 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      priorityFilter === 'P4'
+                        ? 'bg-gray-100 text-gray-800 border border-gray-300 font-medium'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                    <span>P4</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SECTION 3: CHANNEL (Only Email and WhatsApp as requested!) */}
+              <div>
+                <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+                  CHANNEL
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <button
+                    onClick={() => setChannelFilter('All')}
+                    className={`px-3.5 py-1.5 rounded-full font-medium transition-all ${
+                      channelFilter === 'All'
+                        ? 'bg-rose-50 text-rose-600 border border-rose-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    All
+                  </button>
+
+                  {/* Email with Gmail icon */}
+                  <button
+                    onClick={() => setChannelFilter('Email')}
+                    className={`px-3.5 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      channelFilter === 'Email'
+                        ? 'bg-red-50 text-red-700 border border-red-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                    </svg>
+                    <span>Email</span>
+                  </button>
+
+                  {/* WhatsApp with icon */}
+                  <button
+                    onClick={() => setChannelFilter('WhatsApp')}
+                    className={`px-3.5 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
+                      channelFilter === 'WhatsApp'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-semibold'
+                        : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5 text-emerald-500" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                    </svg>
+                    <span>WhatsApp</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
               <button
                 onClick={() => {
                   setStatusFilter('All');
                   setPriorityFilter('All');
                   setChannelFilter('All');
-                  setSearchQuery('');
                 }}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold shadow-md transition-all"
+                className="text-xs font-semibold text-gray-500 hover:text-gray-800 underline"
               >
-                Reset All Filters
+                Clear all
+              </button>
+              <button
+                onClick={() => setIsFilterModalOpen(false)}
+                className="px-5 py-2 rounded-xl bg-[#be123c] hover:bg-[#9f1239] text-white text-xs font-bold shadow-md shadow-rose-900/20 transition-all"
+              >
+                Apply Filters
               </button>
             </div>
-          ) : viewMode === 'inbox' ? (
-            
-            // ========================================================
-            // A) MODERN APP INBOX SPLIT-VIEW (Requested by user)     
-            // ========================================================
-            <div className="h-full flex divide-x divide-white/10 overflow-hidden">
-              
-              {/* Ticket Cards List (Left Column) */}
-              <div className="w-full md:w-[380px] lg:w-[420px] flex-shrink-0 flex flex-col bg-[#050b18] overflow-y-auto divide-y divide-white/5">
-                {filteredComplaints.map(item => {
-                  const isSelected = selectedTicket?.id === item.id;
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => setSelectedTicketId(item.id)}
-                      className={`p-4 cursor-pointer transition-all border-l-4 ${
-                        isSelected 
-                          ? 'bg-[#0f172a] border-l-red-500 shadow-inner' 
-                          : 'hover:bg-white/[0.03] border-l-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold text-cyan-400">
-                            {item.ticketNo || `TKT-${item.id}`}
-                          </span>
-                          {getPriorityBadge(item.priority)}
-                        </div>
-                        <span className="text-[11px] font-mono text-slate-400">
-                          {item.date || 'Today'}
-                        </span>
-                      </div>
 
-                      <h4 className="text-sm font-semibold text-white truncate mb-1">
-                        {item.clientName || 'Unnamed Client'}
-                      </h4>
-
-                      <p className="text-xs text-slate-400 line-clamp-2 mb-2.5 font-normal leading-relaxed">
-                        {item.problem || 'No problem description provided.'}
-                      </p>
-
-                      <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
-                        <div className="flex items-center gap-1.5">
-                          {getStatusBadge(item.status)}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getChannelBadge(item.channel)}
-                        </div>
-                      </div>
-
-                      {/* Assigned Engineer preview if present */}
-                      {(item.engineer1 || item.engineer2) && (
-                        <div className="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
-                          <Wrench className="w-3 h-3 text-slate-500" />
-                          <span>Assigned: <strong className="text-slate-200">{[item.engineer1, item.engineer2].filter(Boolean).join(', ')}</strong></span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Selected Ticket Workspace (Right Column) */}
-              {selectedTicket ? (
-                <div className="flex-1 flex flex-col overflow-y-auto bg-[#020617] p-6 lg:p-8">
-                  
-                  {/* Top Ticket Header Banner */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-white/10 gap-4">
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-xl font-bold font-mono text-cyan-400">
-                          {selectedTicket.ticketNo || `TKT-${selectedTicket.id}`}
-                        </span>
-                        {getPriorityBadge(selectedTicket.priority)}
-                        {getStatusBadge(selectedTicket.status)}
-                      </div>
-                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                        {selectedTicket.clientName}
-                      </h2>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Registered on {selectedTicket.date} &bull; Type: <strong className="text-slate-200">{selectedTicket.complaintType || 'CCTV'}</strong>
-                      </p>
-                    </div>
-
-                    {/* Quick Communication Actions (WhatsApp & Gmail directly from ticket) */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* WhatsApp to Client */}
-                      {selectedTicket.contactNumber && (
-                        <a
-                          href={`https://wa.me/91${selectedTicket.contactNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                            `Hello ${selectedTicket.clientName}, this is Digitech HMS regarding your service ticket ${selectedTicket.ticketNo} (${selectedTicket.problem}).`
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/40 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
-                          title="Message Client directly on WhatsApp"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>WhatsApp Client</span>
-                        </a>
-                      )}
-
-                      {/* Gmail to Client / Cc Admin */}
-                      <a
-                        href={`mailto:${selectedTicket.clientEmail || 'vineet@digitechservices.net'}?cc=vineet@digitechservices.net&subject=${encodeURIComponent(
-                          `Digitech HMS Update: Ticket ${selectedTicket.ticketNo} - ${selectedTicket.clientName}`
-                        )}&body=${encodeURIComponent(
-                          `Dear ${selectedTicket.clientName},\n\nRegarding your complaint (${selectedTicket.ticketNo}):\nProblem: ${selectedTicket.problem}\nStatus: ${selectedTicket.status}\nAssigned Engineer: ${selectedTicket.engineer1 || 'Assigned shortly'}\n\nThank you,\nDigitech HMS Support Team`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-600/40 text-red-300 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
-                        title="Send Email update via Gmail"
-                      >
-                        <Mail className="w-3.5 h-3.5 text-red-400" />
-                        <span>Send Email</span>
-                      </a>
-
-                      {/* Big Save Button */}
-                      <button
-                        onClick={() => saveComplaint(selectedTicket.id)}
-                        disabled={saveStatus.saving && saveStatus.id === selectedTicket.id}
-                        className="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-red-950 disabled:opacity-50"
-                      >
-                        {saveStatus.saving && saveStatus.id === selectedTicket.id ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Save className="w-3.5 h-3.5" />
-                        )}
-                        <span>Save Changes</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Save Status Banner Notification */}
-                  {saveStatus.message && saveStatus.id === selectedTicket.id && (
-                    <div className="mt-4 p-3 rounded-lg bg-emerald-950/80 border border-emerald-600/50 text-emerald-300 text-xs flex items-center gap-2 animate-fade-in">
-                      <Check className="w-4 h-4 text-emerald-400" />
-                      <span>{saveStatus.message}</span>
-                    </div>
-                  )}
-
-                  {/* Two Major Step Sections: Step 01 Client Record & Step 02 Engineer Status */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                    
-                    {/* ======================================================== */}
-                    {/* STEP 01 - CLIENT REGISTRATION DATA (Read-Only)          */}
-                    {/* ======================================================== */}
-                    <div className="rounded-xl bg-[#090f22] border border-white/10 p-5 space-y-4">
-                      <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-400 font-bold text-xs flex items-center justify-center border border-amber-500/30">
-                            01
-                          </span>
-                          <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                            Client Registration Details
-                          </h3>
-                        </div>
-                        <span className="text-[10px] font-mono text-slate-400">Step -01-</span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-400 block mb-1">Client / Company Name</label>
-                          <div className="p-2.5 rounded-lg bg-black/40 border border-white/10 text-white font-semibold">
-                            {selectedTicket.clientName || 'N/A'}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-400 block mb-1">Client Email Address</label>
-                          <div className="p-2.5 rounded-lg bg-black/40 border border-white/10 text-slate-200 truncate flex items-center justify-between">
-                            <span>{selectedTicket.clientEmail || 'N/A'}</span>
-                            {selectedTicket.clientEmail && (
-                              <a href={`mailto:${selectedTicket.clientEmail}`} className="text-red-400 hover:text-red-300">
-                                <Mail className="w-3.5 h-3.5" />
-                              </a>
-                            )}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-400 block mb-1">Contact Person</label>
-                          <div className="p-2.5 rounded-lg bg-black/40 border border-white/10 text-slate-200">
-                            {selectedTicket.contactPerson || 'N/A'}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-400 block mb-1">Contact Number</label>
-                          <div className="p-2.5 rounded-lg bg-black/40 border border-white/10 text-slate-200 font-mono flex items-center justify-between">
-                            <span>{selectedTicket.contactNumber || 'N/A'}</span>
-                            {selectedTicket.contactNumber && (
-                              <a 
-                                href={`tel:${selectedTicket.contactNumber}`} 
-                                className="text-emerald-400 hover:text-emerald-300"
-                              >
-                                <Phone className="w-3.5 h-3.5" />
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] font-medium text-slate-400 block mb-1">Site / Facility Address</label>
-                        <div className="p-2.5 rounded-lg bg-black/40 border border-white/10 text-slate-200 text-xs flex items-start gap-2">
-                          <MapPin className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                          <span>{selectedTicket.address || 'N/A'}</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] font-medium text-slate-400 block mb-1">Problem / Complaint Description</label>
-                        <div className="p-3 rounded-lg bg-black/50 border border-white/10 text-slate-100 text-xs leading-relaxed whitespace-pre-wrap min-h-[90px]">
-                          {selectedTicket.problem || 'No description provided.'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ======================================================== */}
-                    {/* STEP 02 - ADMIN & ENGINEER ATTEND STATUS (Editable)     */}
-                    {/* ======================================================== */}
-                    <div className="rounded-xl bg-[#0a1128] border border-white/10 p-5 space-y-4">
-                      <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-md bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center border border-emerald-500/30">
-                            02
-                          </span>
-                          <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                            Engineer Assignment & Action
-                          </h3>
-                        </div>
-                        <span className="text-[10px] font-mono text-emerald-400 font-bold">Step -02-</span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                        {/* Priority Selector */}
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-300 block mb-1">Ticket Priority</label>
-                          <select
-                            value={selectedTicket.priority || 'P2'}
-                            onChange={e => updateComplaint(selectedTicket.id, 'priority', e.target.value)}
-                            className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-red-500"
-                          >
-                            <option value="P1">P1 - Critical (Immediate Dispatch)</option>
-                            <option value="P2">P2 - High Priority</option>
-                            <option value="P3">P3 - Medium Priority</option>
-                            <option value="P4">P4 - Low Priority</option>
-                          </select>
-                        </div>
-
-                        {/* Status Selector */}
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-300 block mb-1">Ticket Status</label>
-                          <select
-                            value={selectedTicket.status || 'Open'}
-                            onChange={e => updateComplaint(selectedTicket.id, 'status', e.target.value)}
-                            className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-red-500"
-                          >
-                            <option value="Open">Open</option>
-                            <option value="Awaiting Approval">Awaiting Approval</option>
-                            <option value="Awaiting Customer">Awaiting Customer</option>
-                            <option value="Escalated">Escalated</option>
-                            <option value="Under observation">Under observation</option>
-                            <option value="Resolved">Resolved</option>
-                            <option value="Closed">Closed</option>
-                            <option value="Completed">Completed</option>
-                          </select>
-                        </div>
-
-                        {/* Assigned Date */}
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-300 block mb-1">Assigned Date</label>
-                          <input
-                            type="date"
-                            value={selectedTicket.assignedDate || ''}
-                            onChange={e => updateComplaint(selectedTicket.id, 'assignedDate', e.target.value)}
-                            className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-red-500"
-                          />
-                        </div>
-
-                        {/* Final Status */}
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-300 block mb-1">Final Status</label>
-                          <select
-                            value={selectedTicket.finalStatus || ''}
-                            onChange={e => updateComplaint(selectedTicket.id, 'finalStatus', e.target.value)}
-                            className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-red-500"
-                          >
-                            <option value="">Select Final Status</option>
-                            <option value="Complete">Complete</option>
-                            <option value="Quotation sent">Quotation sent</option>
-                            <option value="Invoice raise">Invoice raise</option>
-                          </select>
-                        </div>
-
-                        {/* Assigned Engineer 1 */}
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-300 block mb-1">Assigned to Engineer 01</label>
-                          <select
-                            value={selectedTicket.engineer1 || ''}
-                            onChange={e => updateComplaint(selectedTicket.id, 'engineer1', e.target.value)}
-                            className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-red-500"
-                          >
-                            <option value="">Select Engineer</option>
-                            <option>Abdul</option>
-                            <option>Sharukh</option>
-                            <option>Govind</option>
-                            <option>Himanshu</option>
-                            <option>Ashish</option>
-                            <option>Zubair</option>
-                            <option>Other</option>
-                          </select>
-                        </div>
-
-                        {/* Assigned Engineer 2 */}
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-300 block mb-1">Assigned to Engineer 02</label>
-                          <select
-                            value={selectedTicket.engineer2 || ''}
-                            onChange={e => updateComplaint(selectedTicket.id, 'engineer2', e.target.value)}
-                            className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-red-500"
-                          >
-                            <option value="">Select Engineer</option>
-                            <option>Abdul</option>
-                            <option>Sharukh</option>
-                            <option>Govind</option>
-                            <option>Himanshu</option>
-                            <option>Ashish</option>
-                            <option>Zubair</option>
-                            <option>Other</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Observations / Findings */}
-                      <div>
-                        <label className="text-[11px] font-medium text-slate-300 block mb-1">Finding / Observation / Reason</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Connector loose, power surge on switch, firmware crash..."
-                          value={selectedTicket.finding || ''}
-                          onChange={e => updateComplaint(selectedTicket.id, 'finding', e.target.value)}
-                          className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
-                        />
-                      </div>
-
-                      {/* Solution Provided / Action Taken */}
-                      <div>
-                        <label className="text-[11px] font-medium text-slate-300 block mb-1">Solution Provided / Action Taken</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Replaced RJ45 connector, patched firmware, aligned camera lens..."
-                          value={selectedTicket.actionTaken || ''}
-                          onChange={e => updateComplaint(selectedTicket.id, 'actionTaken', e.target.value)}
-                          className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
-                        />
-                      </div>
-
-                      {/* Material & Remarks Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-300 block mb-1">Used Material</label>
-                          <input
-                            type="text"
-                            placeholder="Material used..."
-                            value={selectedTicket.usedMaterial || ''}
-                            onChange={e => updateComplaint(selectedTicket.id, 'usedMaterial', e.target.value)}
-                            className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-300 block mb-1">Required Material</label>
-                          <input
-                            type="text"
-                            placeholder="Spare needed..."
-                            value={selectedTicket.requiredMaterial || ''}
-                            onChange={e => updateComplaint(selectedTicket.id, 'requiredMaterial', e.target.value)}
-                            className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-[11px] font-medium text-slate-300 block mb-1">Remarks</label>
-                          <select
-                            value={selectedTicket.remarks || ''}
-                            onChange={e => updateComplaint(selectedTicket.id, 'remarks', e.target.value)}
-                            className="w-full bg-[#050b18] border border-white/20 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-red-500"
-                          >
-                            <option value="">Select</option>
-                            <option>U/W</option>
-                            <option>U/AMC</option>
-                            <option>Chargeable</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Explicit Save Action Card */}
-                      <div className="pt-2 flex items-center justify-between">
-                        <span className="text-[11px] text-slate-400">
-                          Click Save to persist changes to the cloud database.
-                        </span>
-                        <button
-                          onClick={() => saveComplaint(selectedTicket.id)}
-                          disabled={saveStatus.saving && saveStatus.id === selectedTicket.id}
-                          className="px-5 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-2 transition-all shadow-lg shadow-red-950 disabled:opacity-50"
-                        >
-                          <Save className="w-4 h-4" />
-                          <span>Save Changes</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-          ) : (
-
-            // ========================================================
-            // B) FULL SPREADSHEET GRID VIEW (Redesigned with dark UI)  
-            // ========================================================
-            <div className="h-full w-full overflow-auto p-4 bg-[#020617]">
-              <div className="rounded-xl border border-white/10 overflow-hidden bg-[#070d1e] shadow-2xl">
-                <table className="w-full text-xs text-left whitespace-nowrap">
-                  <thead>
-                    <tr>
-                      <th colSpan={10} className="bg-amber-950/60 text-amber-300 border-b border-r border-amber-700/40 py-2.5 px-4 text-center font-bold text-xs uppercase tracking-wider">
-                        STEP -01- (Call Registration Details)
-                      </th>
-                      <th colSpan={14} className="bg-emerald-950/60 text-emerald-300 border-b border-emerald-700/40 py-2.5 px-4 text-center font-bold text-xs uppercase tracking-wider">
-                        STEP -02- (Call Attend Status & Resolution)
-                      </th>
-                    </tr>
-                    <tr className="bg-black/60 text-slate-300 font-semibold border-b border-white/10">
-                      {/* Step 1 Headers */}
-                      <th className="py-2.5 px-3 border-r border-white/10 bg-[#070d1e] sticky left-0 z-20">S.No</th>
-                      <th className="py-2.5 px-3 border-r border-white/10 bg-[#070d1e] sticky left-[50px] z-20">Date</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Type</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Ticket No</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Priority</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Client Name</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Client Email</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Address</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Contact Person</th>
-                      <th className="py-2.5 px-3 border-r border-white/20">Contact Number</th>
-
-                      {/* Step 2 Headers */}
-                      <th className="py-2.5 px-3 border-r border-white/10">Assigned Date</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Engineer 01</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Engineer 02</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Problem Reason</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Finding / Observation</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Action Taken</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Used Material</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Required Material</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Remarks</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Status</th>
-                      <th className="py-2.5 px-3 border-r border-white/10">Final Status</th>
-                      <th className="py-2.5 px-3 sticky right-0 z-20 bg-[#070d1e] text-center">Save</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {filteredComplaints.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-2 px-3 border-r border-white/10 sticky left-0 z-10 bg-[#070d1e] font-mono text-slate-400">{idx + 1}</td>
-                        <td className="py-2 px-3 border-r border-white/10 sticky left-[50px] z-10 bg-[#070d1e] font-mono text-slate-300">{item.date}</td>
-                        <td className="py-2 px-3 border-r border-white/10 text-slate-300">{item.complaintType}</td>
-                        <td className="py-2 px-3 border-r border-white/10 font-mono font-bold text-cyan-400">{item.ticketNo}</td>
-                        <td className="py-2 px-3 border-r border-white/10">{getPriorityBadge(item.priority)}</td>
-                        <td className="py-2 px-3 border-r border-white/10 font-semibold text-white">{item.clientName}</td>
-                        <td className="py-2 px-3 border-r border-white/10 text-slate-300">{item.clientEmail}</td>
-                        <td className="py-2 px-3 border-r border-white/10 text-slate-400 truncate max-w-[150px]">{item.address}</td>
-                        <td className="py-2 px-3 border-r border-white/10 text-slate-300">{item.contactPerson}</td>
-                        <td className="py-2 px-3 border-r border-white/20 font-mono text-slate-300">{item.contactNumber}</td>
-
-                        {/* Step 2 Inputs */}
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <input 
-                            type="date" 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white"
-                            value={item.assignedDate || ''} 
-                            onChange={e => updateComplaint(item.id, 'assignedDate', e.target.value)} 
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <select 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white"
-                            value={item.engineer1 || ''} 
-                            onChange={e => updateComplaint(item.id, 'engineer1', e.target.value)}
-                          >
-                            <option value="">Select</option>
-                            <option>Abdul</option>
-                            <option>Sharukh</option>
-                            <option>Govind</option>
-                            <option>Himanshu</option>
-                            <option>Ashish</option>
-                            <option>Zubair</option>
-                            <option>Other</option>
-                          </select>
-                        </td>
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <select 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white"
-                            value={item.engineer2 || ''} 
-                            onChange={e => updateComplaint(item.id, 'engineer2', e.target.value)}
-                          >
-                            <option value="">Select</option>
-                            <option>Abdul</option>
-                            <option>Sharukh</option>
-                            <option>Govind</option>
-                            <option>Himanshu</option>
-                            <option>Ashish</option>
-                            <option>Zubair</option>
-                            <option>Other</option>
-                          </select>
-                        </td>
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <input 
-                            type="text" 
-                            placeholder="Reason..." 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white w-28"
-                            value={item.problem || ''} 
-                            onChange={e => updateComplaint(item.id, 'problem', e.target.value)} 
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <input 
-                            type="text" 
-                            placeholder="Finding..." 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white w-28"
-                            value={item.finding || ''} 
-                            onChange={e => updateComplaint(item.id, 'finding', e.target.value)} 
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <input 
-                            type="text" 
-                            placeholder="Action..." 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white w-28"
-                            value={item.actionTaken || ''} 
-                            onChange={e => updateComplaint(item.id, 'actionTaken', e.target.value)} 
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <input 
-                            type="text" 
-                            placeholder="Used..." 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white w-20"
-                            value={item.usedMaterial || ''} 
-                            onChange={e => updateComplaint(item.id, 'usedMaterial', e.target.value)} 
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <input 
-                            type="text" 
-                            placeholder="Req..." 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white w-20"
-                            value={item.requiredMaterial || ''} 
-                            onChange={e => updateComplaint(item.id, 'requiredMaterial', e.target.value)} 
-                          />
-                        </td>
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <select 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white"
-                            value={item.remarks || ''} 
-                            onChange={e => updateComplaint(item.id, 'remarks', e.target.value)}
-                          >
-                            <option value="">Select</option>
-                            <option>U/W</option>
-                            <option>U/AMC</option>
-                            <option>Chargeable</option>
-                          </select>
-                        </td>
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <select 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white"
-                            value={item.status || 'Open'} 
-                            onChange={e => updateComplaint(item.id, 'status', e.target.value)}
-                          >
-                            <option value="Open">Open</option>
-                            <option value="Awaiting Approval">Awaiting Approval</option>
-                            <option value="Awaiting Customer">Awaiting Customer</option>
-                            <option value="Escalated">Escalated</option>
-                            <option value="Under observation">Under observation</option>
-                            <option value="Resolved">Resolved</option>
-                            <option value="Closed">Closed</option>
-                            <option value="Completed">Completed</option>
-                          </select>
-                        </td>
-                        <td className="py-1.5 px-2 border-r border-white/10">
-                          <select 
-                            className="bg-[#030712] border border-white/15 rounded p-1 text-xs text-white"
-                            value={item.finalStatus || ''} 
-                            onChange={e => updateComplaint(item.id, 'finalStatus', e.target.value)}
-                          >
-                            <option value="">Final Status</option>
-                            <option>Complete</option>
-                            <option>Quotation sent</option>
-                            <option>Invoice raise</option>
-                          </select>
-                        </td>
-                        <td className="py-1.5 px-3 sticky right-0 z-10 bg-[#070d1e] text-center">
-                          <button 
-                            onClick={() => saveComplaint(item.id)} 
-                            disabled={saveStatus.saving && saveStatus.id === item.id}
-                            className="bg-red-600 hover:bg-red-500 text-white font-bold py-1 px-3 rounded text-xs transition-colors shadow disabled:opacity-50"
-                          >
-                            {saveStatus.saving && saveStatus.id === item.id ? 'Saving...' : 'Save'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-      </main>
+      )}
+
     </div>
   );
 }

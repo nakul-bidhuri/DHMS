@@ -24,7 +24,7 @@ function Navbar() {
       <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-digitech-red/50 to-transparent"></div>
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img src="https://digitechhms.net/static/img/digitech-logo-light.png" alt="Digitech HMS" className="h-8 w-auto" />
+          <img src="/digitech-logo.svg" alt="Digitech HMS" className="h-8 w-auto" />
         </div>
         <div className="hidden md:flex items-center gap-8 text-xs text-gray-400">
           <a href="#product" className="hover:text-red-400 transition-colors">Product</a>
@@ -724,7 +724,7 @@ function Footer() {
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <img src="https://digitechhms.net/static/img/digitech-logo-light.png" alt="Digitech HMS" className="h-8 w-auto" />
+              <img src="/digitech-logo.svg" alt="Digitech HMS" className="h-8 w-auto" />
             </div>
             <p className="text-gray-500 text-sm max-w-xs">
               Enterprise-grade Security Infrastructure Health Monitoring Platform. Know before you need the footage.
