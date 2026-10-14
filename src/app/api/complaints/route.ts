@@ -34,6 +34,8 @@ export async function POST(request: Request) {
       id: complaints.length > 0 ? Math.max(...complaints.map((c: any) => c.id || 0)) + 1 : 1,
       date: new Date().toISOString().split('T')[0],
       ticketNo: 'TKT-' + (1000 + complaints.length + 1),
+      priority: data.priority || 'P2',
+      channel: data.channel || 'Web Portal',
       assignedDate: '',
       engineer1: '',
       engineer2: '',
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
       usedMaterial: '',
       requiredMaterial: '',
       remarks: '',
-      status: 'Pending',
+      status: 'Open',
       finalStatus: ''
     };
     
@@ -55,12 +57,14 @@ export async function POST(request: Request) {
     // NOTIFICATION LOGIC (Email & WhatsApp)
     // ==========================================
     
-    const notificationMessage = \New Complaint Received!
-Ticket: \
-Client: \
-Phone: \
-Email: \
-Problem: \\;
+    const notificationMessage = [
+      'New Complaint Received!',
+      'Ticket: ' + (newComplaint.ticketNo || ''),
+      'Client: ' + (newComplaint.clientName || ''),
+      'Phone: ' + (newComplaint.contactNumber || ''),
+      'Email: ' + (newComplaint.clientEmail || 'N/A'),
+      'Problem: ' + (newComplaint.problem || '')
+    ].join('\n');
 
     // 1. Send Email via FormSubmit (Requires one-time activation click on first run)
     try {
@@ -87,7 +91,7 @@ Problem: \\;
     try {
       const whatsappKey = 'YOUR_API_KEY_HERE';
       const encodedMessage = encodeURIComponent(notificationMessage);
-      const whatsappUrl = \https://api.callmebot.com/whatsapp.php?phone=9999760222&text=\&apikey=\\;
+      const whatsappUrl = 'https://api.callmebot.com/whatsapp.php?phone=9999760222&text=' + encodedMessage + '&apikey=' + whatsappKey;
       
       if (whatsappKey !== 'YOUR_API_KEY_HERE') {
         await fetch(whatsappUrl);
