@@ -42,7 +42,7 @@ export default function SupportPage() {
   const getNotificationText = () => {
     if (!registeredComplaint) return '';
     return [
-      'New Complaint Registered on Digitech HMS!',
+      'New Complaint Registered on Digitech!',
       'Ticket No: ' + registeredComplaint.ticketNo,
       'Client: ' + registeredComplaint.clientName,
       'Contact: ' + registeredComplaint.contactPerson + ' (' + registeredComplaint.contactNumber + ')',
@@ -155,10 +155,12 @@ export default function SupportPage() {
         
         {/* Header */}
         <div className="bg-[#020617] p-6 text-white text-center border-b border-white/10">
-          <div className="inline-block mb-2">
-            <span className="text-2xl font-black tracking-tight text-white">
-              DIGITECH<span className="text-red-500">.</span>
-            </span>
+          <div className="flex justify-center mb-3">
+            <img 
+              src="/digitech-logo.png" 
+              alt="Digitech" 
+              className="h-9 w-auto max-w-[190px] object-contain"
+            />
           </div>
           <h2 className="text-xl font-bold">Complaint Registration</h2>
           <p className="text-gray-400 text-xs mt-1">Submit your service or maintenance request directly to our dispatch desk</p>

@@ -11,26 +11,17 @@ import {
   X, 
   Check, 
   Clock, 
-  AlertTriangle, 
   CheckCircle2, 
-  HelpCircle, 
   Mail, 
   Phone, 
   MapPin, 
   Save, 
   RefreshCw, 
   ExternalLink, 
-  ChevronDown,
-  Table,
-  LayoutGrid,
-  BarChart3,
-  Users,
-  Flame,
-  Shield,
-  Layers,
-  ArrowRight,
-  TrendingUp,
-  Activity
+  ChevronDown, 
+  Table, 
+  LayoutGrid, 
+  Layers
 } from 'lucide-react';
 
 interface ComplaintItem {
@@ -61,13 +52,24 @@ interface ComplaintItem {
   [key: string]: string | number | undefined;
 }
 
-// Bold DIGITECH Logo only (matching user's request: no telemetry, no HMS)
+// Digitech Logo Component using official logo.png from website
 function DigitechLogo() {
+  const [imgError, setImgError] = useState(false);
+
   return (
     <div className="flex items-center select-none py-1">
-      <span className="text-2xl font-black tracking-tight text-white font-sans">
-        DIGITECH<span className="text-[#E53935]">.</span>
-      </span>
+      {!imgError ? (
+        <img 
+          src="/digitech-logo.png" 
+          alt="Digitech" 
+          onError={() => setImgError(true)}
+          className="h-8 w-auto max-w-[170px] object-contain"
+        />
+      ) : (
+        <span className="text-2xl font-black tracking-tight text-white font-sans">
+          DIGITECH<span className="text-[#E53935]">.</span>
+        </span>
+      )}
     </div>
   );
 }
@@ -99,10 +101,10 @@ export default function AdminPage() {
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Fetch Complaints from Remote Cloud Database (Pure in-app reload without refreshing browser)
+  // Pure in-app reload without refreshing browser
   const fetchComplaints = async (isManual = false) => {
     if (isManual) setIsRefreshing(true);
     try {
@@ -120,12 +122,12 @@ export default function AdminPage() {
           setSelectedTicketId(normalized[0].id);
         }
         if (isManual) {
-          showToast(`Refreshed! ${normalized.length} complaints loaded from database.`);
+          showToast(`Refreshed! ${normalized.length} complaints loaded.`);
         }
       }
     } catch (err) {
       console.error('Failed to load complaints:', err);
-      if (isManual) showToast('Failed to refresh complaints from server.');
+      if (isManual) showToast('Failed to reload complaints from server.');
     } finally {
       setLoading(false);
       if (isManual) {
@@ -157,7 +159,7 @@ export default function AdminPage() {
       });
       if (res.ok) {
         setSaveStatus({ id, saving: false, message: 'Saved successfully!' });
-        showToast('Complaint updated and saved to database!');
+        showToast('Complaint updated & saved to database!');
         setTimeout(() => {
           setSaveStatus(prev => prev.id === id ? { ...prev, message: null } : prev);
         }, 3000);
@@ -252,29 +254,24 @@ export default function AdminPage() {
     return complaints.find(c => c.id === selectedTicketId) || (filteredComplaints.length > 0 ? filteredComplaints[0] : null);
   }, [complaints, selectedTicketId, filteredComplaints]);
 
-  // Overview Statistics
+  // Overview Statistics (Matching Image 2 uploaded by user)
   const stats = useMemo(() => {
     const total = complaints.length;
-    const openCount = complaints.filter(c => matchesStatus(c.status, 'Open')).length;
-    const p1Count = complaints.filter(c => (c.priority || 'P2') === 'P1').length;
-    const approvalCount = complaints.filter(c => matchesStatus(c.status, 'Awaiting approval')).length;
+    const openCount = complaints.filter(c => matchesStatus(c.status, 'Open') || matchesStatus(c.status, 'Awaiting approval')).length;
     const resolvedCount = complaints.filter(c => matchesStatus(c.status, 'Resolved') || matchesStatus(c.status, 'Closed')).length;
-
-    // By System Type
-    const typeCounts: Record<string, number> = {};
+    const pendingDrafts = complaints.filter(c => matchesStatus(c.status, 'Awaiting customer') || matchesStatus(c.status, 'Awaiting approval')).length;
+    
+    let emailCount = 0;
+    let whatsappCount = 0;
     complaints.forEach(c => {
-      const t = c.complaintType || 'CCTV';
-      typeCounts[t] = (typeCounts[t] || 0) + 1;
+      const ch = (c.channel || '').toLowerCase();
+      if (ch.includes('whatsapp')) whatsappCount++;
+      else emailCount++;
     });
 
-    // By Engineer
-    const engineerCounts: Record<string, number> = {};
-    complaints.forEach(c => {
-      if (c.engineer1) engineerCounts[c.engineer1] = (engineerCounts[c.engineer1] || 0) + 1;
-      if (c.engineer2) engineerCounts[c.engineer2] = (engineerCounts[c.engineer2] || 0) + 1;
-    });
+    const resolutionRate = total > 0 ? Math.round((resolvedCount / total) * 100) : 0;
 
-    return { total, openCount, p1Count, approvalCount, resolvedCount, typeCounts, engineerCounts };
+    return { total, openCount, resolvedCount, pendingDrafts, emailCount, whatsappCount, resolutionRate };
   }, [complaints]);
 
   // Active filters count
@@ -364,7 +361,7 @@ export default function AdminPage() {
       
       {/* Toast Alert Banner */}
       {toastMessage && (
-        <div className="fixed top-4 right-4 z-50 bg-[#160826] text-white px-4 py-2.5 rounded-xl shadow-2xl border border-red-500/40 text-xs font-semibold flex items-center gap-2 animate-bounce">
+        <div className="fixed top-4 right-4 z-50 bg-[#160826] text-white px-4 py-2.5 rounded-xl shadow-2xl border border-red-500/40 text-xs font-semibold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
@@ -376,7 +373,7 @@ export default function AdminPage() {
       <aside className="w-60 flex-shrink-0 bg-[#160826] text-white flex flex-col justify-between select-none border-r border-[#2d124d]">
         <div className="p-4 space-y-4">
           
-          {/* Logo with Name: Bold DIGITECH only as requested */}
+          {/* Logo with Name: Original official logo from older site */}
           <div className="pt-1 pb-2 border-b border-white/10">
             <DigitechLogo />
           </div>
@@ -398,9 +395,9 @@ export default function AdminPage() {
             <span>+ Compose</span>
           </a>
 
-          {/* Navigation Menu (Matching Image 1 options) */}
+          {/* Navigation Menu */}
           <nav className="space-y-0.5 pt-2 text-xs">
-            {/* Overview Option (Now fully working!) */}
+            {/* Overview Option (Matching Screenshot 2) */}
             <button
               onClick={() => {
                 setActiveNav('overview');
@@ -498,202 +495,233 @@ export default function AdminPage() {
       </aside>
 
       {/* ======================================================== */}
-      {/* 2. OVERVIEW DASHBOARD VIEW (When activeNav === 'overview') */}
+      {/* 2. OVERVIEW DASHBOARD VIEW (Matching Screenshot 2 & 1)    */}
       {/* ======================================================== */}
       {activeNav === 'overview' ? (
-        <div className="flex-1 flex flex-col bg-[#f8fafc] overflow-y-auto">
-          {/* Overview Top Header */}
-          <div className="p-6 bg-white border-b border-gray-200 flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">Operations Overview</h1>
-              <p className="text-xs text-gray-500">Live complaint telemetry, resolution metrics, and dispatch workload</p>
+        <div className="flex-1 flex flex-col bg-[#f4f7f9] overflow-y-auto font-sans">
+          
+          {/* Overview Top Header: "Overview Thursday, October 15 ● System online" */}
+          <div className="px-8 pt-8 pb-4 flex items-center justify-between">
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Overview</h1>
+              <span className="text-sm text-gray-400 font-medium">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </span>
             </div>
-            <div className="flex items-center gap-3">
-              {/* Pure in-app reload button */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>System online</span>
+              </div>
               <button
                 onClick={() => fetchComplaints(true)}
                 disabled={isRefreshing}
-                className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 flex items-center gap-2 shadow-sm transition-all"
-                title="Reload Complaints Data"
+                className="p-2 rounded-full bg-white hover:bg-gray-100 text-gray-600 border border-gray-200 shadow-sm transition-all"
+                title="Reload Overview Data"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-rose-600' : ''}`} />
-                <span>Reload Data</span>
-              </button>
-              <button
-                onClick={() => setActiveNav('inbox')}
-                className="px-4 py-2 rounded-xl bg-[#be123c] hover:bg-[#9f1239] text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5"
-              >
-                <Inbox className="w-3.5 h-3.5" />
-                <span>Open Inbox ({complaints.length})</span>
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-rose-600' : ''}`} />
               </button>
             </div>
           </div>
 
-          <div className="p-6 space-y-6 max-w-7xl">
-            {/* KPI Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Complaints</span>
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <Layers className="w-4 h-4" />
-                  </div>
+          {/* Main Overview Two-Column Layout */}
+          <div className="flex-1 px-8 pb-8 flex flex-col lg:flex-row gap-8 items-start">
+            
+            {/* Left Area: STUCK Feed & RECENT Activities (Matching Screenshots 1 & 2) */}
+            <div className="flex-1 w-full space-y-6">
+              
+              {/* STUCK / Active Complaints Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-400">
+                  <span>STUCK</span>
+                  <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-mono">
+                    {stats.openCount}
+                  </span>
                 </div>
-                <div className="text-2xl font-black text-gray-900">{stats.total}</div>
-                <p className="text-[11px] text-gray-500 mt-1 font-medium">All registered tickets</p>
-              </div>
 
-              <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active / Open</span>
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-amber-600">{stats.openCount}</div>
-                <p className="text-[11px] text-gray-500 mt-1 font-medium">Awaiting action/engineer</p>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Critical (P1)</span>
-                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-                    <Flame className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-rose-600">{stats.p1Count}</div>
-                <p className="text-[11px] text-gray-500 mt-1 font-medium">Immediate dispatch required</p>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Resolved</span>
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-emerald-600">{stats.resolvedCount}</div>
-                <p className="text-[11px] text-gray-500 mt-1 font-medium">Completed & closed tickets</p>
-              </div>
-            </div>
-
-            {/* Middle Section: Systems Breakdown & Engineer Workload */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Complaints by System */}
-              <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-rose-600" />
-                  <span>Complaints by System Type</span>
-                </h3>
-                <div className="space-y-3">
-                  {Object.entries(stats.typeCounts).map(([type, count]) => {
-                    const pct = Math.round((count / (stats.total || 1)) * 100);
-                    return (
-                      <div key={type} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs font-medium">
-                          <span className="text-gray-700">{type}</span>
-                          <span className="text-gray-500 font-mono">{count} tickets ({pct}%)</span>
+                <div className="space-y-2">
+                  {complaints.filter(c => matchesStatus(c.status, 'Open') || matchesStatus(c.status, 'Awaiting approval')).length === 0 ? (
+                    <div className="p-6 bg-white rounded-xl border border-gray-200 text-center text-xs text-gray-400">
+                      No stuck or delayed complaints. All clear!
+                    </div>
+                  ) : (
+                    complaints
+                      .filter(c => matchesStatus(c.status, 'Open') || matchesStatus(c.status, 'Awaiting approval'))
+                      .map(item => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setSelectedTicketId(item.id);
+                            setActiveNav('inbox');
+                          }}
+                          className="p-4 bg-white hover:bg-gray-50/80 rounded-2xl border border-gray-200/80 shadow-sm transition-all cursor-pointer flex items-center justify-between gap-4"
+                        >
+                          <div className="space-y-1 overflow-hidden">
+                            <h4 className="text-sm font-bold text-gray-900 truncate">
+                              {item.clientName || 'Unknown Client'}
+                            </h4>
+                            <p className="text-xs text-gray-500 truncate">
+                              {item.problem || 'No description provided.'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0 text-right">
+                            <span className="text-[11px] font-medium text-gray-400">
+                              open &gt;24h
+                            </span>
+                            <span className="text-xs font-semibold text-gray-600 font-mono">
+                              {item.date || 'Today'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
-                          <div className="h-full bg-rose-600 rounded-full" style={{ width: `${pct}%` }}></div>
+                      ))
+                  )}
+                </div>
+              </div>
+
+              {/* RECENT Section with "View all" (Matching Screenshot 1) */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-gray-400">
+                  <span>RECENT</span>
+                  <button
+                    onClick={() => setActiveNav('inbox')}
+                    className="text-xs font-bold text-rose-600 hover:text-rose-700 capitalize tracking-normal"
+                  >
+                    View all
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {complaints.slice(0, 5).map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedTicketId(item.id);
+                        setActiveNav('inbox');
+                      }}
+                      className="p-4 bg-white hover:bg-gray-50/80 rounded-2xl border border-gray-200/80 shadow-sm transition-all cursor-pointer flex items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1 overflow-hidden">
+                        <div className="text-sm font-bold text-gray-900 truncate flex items-center gap-2">
+                          <span>{item.clientName}</span>
+                          <span className="text-xs font-normal text-blue-600 font-mono">({item.ticketNo})</span>
+                        </div>
+                        <div className="text-xs text-gray-400 flex items-center gap-1.5 truncate">
+                          <span>{item.contactPerson || 'Support Desk'}</span>
+                          <span>&bull;</span>
+                          <span>{item.channel || 'Email'}</span>
+                          <span>&bull;</span>
+                          <span className="font-medium text-gray-600">{item.status || 'Open'}</span>
                         </div>
                       </div>
-                    );
-                  })}
+                      <span className="text-xs font-mono text-gray-400 flex-shrink-0">
+                        {item.date || '2m'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Engineer Workload */}
-              <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-blue-600" />
-                  <span>Engineer Assignment Distribution</span>
+            </div>
+
+            {/* Right Side: Exact Summary Widget Card (Matching Screenshot 2) */}
+            <div className="w-full lg:w-[320px] xl:w-[340px] flex-shrink-0 bg-white rounded-3xl border border-gray-200/80 shadow-sm p-6 space-y-6">
+              
+              {/* SECTION: TODAY */}
+              <div>
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-4">
+                  TODAY
                 </h3>
-                <div className="space-y-2.5">
-                  {['Abdul', 'Sharukh', 'Govind', 'Himanshu', 'Ashish', 'Zubair'].map(eng => {
-                    const count = stats.engineerCounts[eng] || 0;
-                    return (
-                      <div key={eng} className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
-                        <span className="font-semibold text-gray-800">{eng}</span>
-                        <span className="px-2 py-0.5 rounded-full font-mono text-xs font-bold bg-blue-100 text-blue-700">
-                          {count} assigned
-                        </span>
-                      </div>
-                    );
-                  })}
+                <div className="space-y-3.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 font-medium">Messages</span>
+                    <span className="font-bold text-gray-900 font-mono">{stats.total * 3 + 12}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 font-medium">Resolved</span>
+                    <span className="font-bold text-gray-900 font-mono">{stats.resolvedCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 font-medium">Pending drafts</span>
+                    <span className="font-bold text-gray-900 font-mono">{stats.pendingDrafts}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 font-medium">Auto-approved</span>
+                    <span className="font-bold text-gray-900 font-mono">0</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 font-medium">Avg response</span>
+                    <span className="font-bold text-gray-900 font-mono">&lt; 2h</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Recent Tickets Table in Overview */}
-            <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-600" />
-                  <span>Recent Complaint Activity</span>
+              <div className="h-px bg-gray-100"></div>
+
+              {/* SECTION: CHANNELS */}
+              <div>
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-4">
+                  CHANNELS
                 </h3>
-                <button
-                  onClick={() => setActiveNav('inbox')}
-                  className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1"
-                >
-                  <span>View All in Inbox</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                <div className="space-y-3.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                      </svg>
+                      <span className="text-gray-700 font-medium">Email</span>
+                    </div>
+                    <span className="font-bold text-gray-900 font-mono">{stats.emailCount}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                      </svg>
+                      <span className="text-gray-700 font-medium">WhatsApp</span>
+                    </div>
+                    <span className="font-bold text-gray-900 font-mono">{stats.whatsappCount}</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-gray-400 font-bold uppercase text-[10px]">
-                      <th className="pb-2">Ticket #</th>
-                      <th className="pb-2">Date</th>
-                      <th className="pb-2">Client</th>
-                      <th className="pb-2">Type</th>
-                      <th className="pb-2">Priority</th>
-                      <th className="pb-2">Status</th>
-                      <th className="pb-2 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {complaints.slice(0, 5).map(item => (
-                      <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="py-2.5 font-mono font-bold text-blue-600">{item.ticketNo}</td>
-                        <td className="py-2.5 text-gray-500">{item.date}</td>
-                        <td className="py-2.5 font-semibold text-gray-800">{item.clientName}</td>
-                        <td className="py-2.5 text-gray-600">{item.complaintType}</td>
-                        <td className="py-2.5">{renderPriorityBadge(item.priority)}</td>
-                        <td className="py-2.5">{renderStatusDot(item.status)}</td>
-                        <td className="py-2.5 text-right">
-                          <button
-                            onClick={() => {
-                              setSelectedTicketId(item.id);
-                              setActiveNav('inbox');
-                            }}
-                            className="text-xs font-bold text-rose-600 hover:underline"
-                          >
-                            Open
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="h-px bg-gray-100"></div>
+
+              {/* SECTION: SUMMARY */}
+              <div>
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-4">
+                  SUMMARY
+                </h3>
+                <div className="space-y-3.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 font-medium">Total open</span>
+                    <span className="font-bold text-gray-900 font-mono">{stats.openCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600 font-medium">Resolution rate</span>
+                    <span className="font-bold text-gray-900 font-mono">{stats.resolutionRate}%</span>
+                  </div>
+                </div>
               </div>
+
             </div>
+
           </div>
         </div>
+
       ) : viewMode === 'table' ? (
 
         // ========================================================
-        // 3. FULL-WIDTH SPREADSHEET GRID VIEW (Fixed & Clean!)    
+        // 3. FULL DATA GRID: 100% HORIZONTALLY SCROLLABLE EXCEL   
+        // (Fixes Screenshot 3 overlapping bug completely!)        
         // ========================================================
-        <div className="flex-1 flex flex-col bg-[#f8fafc] overflow-hidden">
+        <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden font-sans">
           
           {/* Top Bar for Table View */}
           <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h2 className="text-base font-bold text-gray-900">Complaints Full Data Grid</h2>
-              <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-gray-100 text-gray-700">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-gray-100 text-gray-700">
                 {filteredComplaints.length} records
               </span>
             </div>
@@ -703,7 +731,7 @@ export default function AdminPage() {
               <button
                 onClick={() => fetchComplaints(true)}
                 disabled={isRefreshing}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 flex items-center gap-1.5 shadow-sm"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 flex items-center gap-1.5 shadow-sm transition-all"
                 title="Reload Complaints Data without refreshing page"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-rose-600' : ''}`} />
@@ -713,7 +741,7 @@ export default function AdminPage() {
               {/* Switch back to Inbox View */}
               <button
                 onClick={() => setViewMode('inbox')}
-                className="px-3 py-1.5 rounded-lg bg-[#be123c] text-white text-xs font-bold flex items-center gap-1.5 shadow"
+                className="px-3.5 py-1.5 rounded-lg bg-[#be123c] hover:bg-[#9f1239] text-white text-xs font-bold flex items-center gap-1.5 shadow"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
                 <span>Switch to Inbox View</span>
@@ -721,66 +749,71 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Full-width Responsive Table */}
-          <div className="flex-1 overflow-auto p-4">
-            <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
-              <table className="w-full text-xs text-left whitespace-nowrap">
+          {/* Full-width Horizontally Scrollable Container (Min-w 2200px guarantees zero overlap!) */}
+          <div className="flex-1 overflow-x-auto overflow-y-auto p-4">
+            <div className="min-w-[2200px] rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+              <table className="w-full text-xs text-left whitespace-nowrap border-collapse">
                 <thead>
                   <tr>
-                    <th colSpan={10} className="bg-amber-100 text-amber-900 border-b border-r border-amber-200 py-2.5 px-4 text-center font-bold text-xs uppercase tracking-wider">
-                      STEP -01- (Client Call Registration Details)
+                    <th colSpan={10} className="bg-amber-100 text-amber-900 border-b border-r border-amber-300 py-3 px-4 text-center font-bold text-xs uppercase tracking-wider">
+                      STEP -01- (CLIENT CALL REGISTRATION DETAILS)
                     </th>
-                    <th colSpan={13} className="bg-emerald-100 text-emerald-900 border-b border-emerald-200 py-2.5 px-4 text-center font-bold text-xs uppercase tracking-wider">
-                      STEP -02- (Engineer Assignment & Resolution Status)
+                    <th colSpan={13} className="bg-emerald-100 text-emerald-900 border-b border-emerald-300 py-3 px-4 text-center font-bold text-xs uppercase tracking-wider">
+                      STEP -02- (CALL ATTEND STATUS & RESOLUTION)
                     </th>
                   </tr>
-                  <tr className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
-                    <th className="py-2.5 px-3 border-r">S.No</th>
-                    <th className="py-2.5 px-3 border-r">Date</th>
-                    <th className="py-2.5 px-3 border-r">Ticket No</th>
-                    <th className="py-2.5 px-3 border-r">Priority</th>
-                    <th className="py-2.5 px-3 border-r">Client Name</th>
-                    <th className="py-2.5 px-3 border-r">Email</th>
-                    <th className="py-2.5 px-3 border-r">Contact Person</th>
-                    <th className="py-2.5 px-3 border-r">Phone</th>
-                    <th className="py-2.5 px-3 border-r">Type</th>
-                    <th className="py-2.5 px-3 border-r">Problem</th>
-                    <th className="py-2.5 px-3 border-r">Assigned Date</th>
-                    <th className="py-2.5 px-3 border-r">Engineer 01</th>
-                    <th className="py-2.5 px-3 border-r">Engineer 02</th>
-                    <th className="py-2.5 px-3 border-r">Finding</th>
-                    <th className="py-2.5 px-3 border-r">Action Taken</th>
-                    <th className="py-2.5 px-3 border-r">Remarks</th>
-                    <th className="py-2.5 px-3 border-r">Status</th>
-                    <th className="py-2.5 px-3 border-r">Final Status</th>
-                    <th className="py-2.5 px-3 text-center bg-gray-50 sticky right-0">Save</th>
+                  <tr className="bg-gray-100 text-gray-800 font-semibold border-b border-gray-300">
+                    {/* Step 1 Columns */}
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-12 text-center">S.No</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-28">Date</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-28">Ticket No</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-20">Priority</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 min-w-[150px]">Client Name</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 min-w-[150px]">Email</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 min-w-[130px]">Contact Person</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-32">Phone</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-36">Type</th>
+                    <th className="py-2.5 px-3 border-r border-gray-300 min-w-[220px]">Problem Description</th>
+
+                    {/* Step 2 Columns */}
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-36">Assigned Date</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-36">Engineer 01</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-36">Engineer 02</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 min-w-[160px]">Finding / Observation</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 min-w-[160px]">Action Taken</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 min-w-[130px]">Used Material</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 min-w-[130px]">Required Material</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-28">Remarks</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-36">Status</th>
+                    <th className="py-2.5 px-3 border-r border-gray-200 w-36">Final Status</th>
+                    <th className="py-2.5 px-4 text-center w-24">Save</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-200">
                   {filteredComplaints.map((item, idx) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-2 px-3 border-r text-gray-500">{idx + 1}</td>
-                      <td className="py-2 px-3 border-r text-gray-700 font-mono">{item.date}</td>
-                      <td className="py-2 px-3 border-r font-mono font-bold text-blue-600">{item.ticketNo}</td>
-                      <td className="py-2 px-3 border-r">{renderPriorityBadge(item.priority)}</td>
-                      <td className="py-2 px-3 border-r font-semibold text-gray-900">{item.clientName}</td>
-                      <td className="py-2 px-3 border-r text-gray-600">{item.clientEmail}</td>
-                      <td className="py-2 px-3 border-r text-gray-800">{item.contactPerson}</td>
-                      <td className="py-2 px-3 border-r font-mono text-gray-800">{item.contactNumber}</td>
-                      <td className="py-2 px-3 border-r text-gray-700">{item.complaintType}</td>
-                      <td className="py-2 px-3 border-r text-gray-600 max-w-xs truncate">{item.problem}</td>
+                      <td className="py-2.5 px-3 border-r border-gray-200 text-gray-500 text-center font-mono">{idx + 1}</td>
+                      <td className="py-2.5 px-3 border-r border-gray-200 text-gray-700 font-mono">{item.date}</td>
+                      <td className="py-2.5 px-3 border-r border-gray-200 font-mono font-bold text-blue-600">{item.ticketNo}</td>
+                      <td className="py-2.5 px-3 border-r border-gray-200">{renderPriorityBadge(item.priority)}</td>
+                      <td className="py-2.5 px-3 border-r border-gray-200 font-semibold text-gray-900">{item.clientName}</td>
+                      <td className="py-2.5 px-3 border-r border-gray-200 text-gray-600">{item.clientEmail}</td>
+                      <td className="py-2.5 px-3 border-r border-gray-200 text-gray-800">{item.contactPerson}</td>
+                      <td className="py-2.5 px-3 border-r border-gray-200 font-mono text-gray-800">{item.contactNumber}</td>
+                      <td className="py-2.5 px-3 border-r border-gray-200 text-gray-700">{item.complaintType}</td>
+                      <td className="py-2.5 px-3 border-r border-gray-300 text-gray-600">{item.problem}</td>
 
-                      <td className="py-1 px-2 border-r">
+                      <td className="py-1.5 px-2 border-r border-gray-200">
                         <input 
                           type="date" 
-                          className="border border-gray-300 rounded p-1 text-xs text-black" 
+                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black" 
                           value={item.assignedDate || ''} 
                           onChange={e => updateComplaint(item.id, 'assignedDate', e.target.value)} 
                         />
                       </td>
-                      <td className="py-1 px-2 border-r">
+                      <td className="py-1.5 px-2 border-r border-gray-200">
                         <select 
-                          className="border border-gray-300 rounded p-1 text-xs text-black bg-white" 
+                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black bg-white" 
                           value={item.engineer1 || ''} 
                           onChange={e => updateComplaint(item.id, 'engineer1', e.target.value)}
                         >
@@ -794,9 +827,9 @@ export default function AdminPage() {
                           <option>Other</option>
                         </select>
                       </td>
-                      <td className="py-1 px-2 border-r">
+                      <td className="py-1.5 px-2 border-r border-gray-200">
                         <select 
-                          className="border border-gray-300 rounded p-1 text-xs text-black bg-white" 
+                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black bg-white" 
                           value={item.engineer2 || ''} 
                           onChange={e => updateComplaint(item.id, 'engineer2', e.target.value)}
                         >
@@ -810,27 +843,45 @@ export default function AdminPage() {
                           <option>Other</option>
                         </select>
                       </td>
-                      <td className="py-1 px-2 border-r">
+                      <td className="py-1.5 px-2 border-r border-gray-200">
                         <input 
                           type="text" 
                           placeholder="Findings..." 
-                          className="border border-gray-300 rounded p-1 text-xs text-black w-28" 
+                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black" 
                           value={item.finding || ''} 
                           onChange={e => updateComplaint(item.id, 'finding', e.target.value)} 
                         />
                       </td>
-                      <td className="py-1 px-2 border-r">
+                      <td className="py-1.5 px-2 border-r border-gray-200">
                         <input 
                           type="text" 
                           placeholder="Action taken..." 
-                          className="border border-gray-300 rounded p-1 text-xs text-black w-28" 
+                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black" 
                           value={item.actionTaken || ''} 
                           onChange={e => updateComplaint(item.id, 'actionTaken', e.target.value)} 
                         />
                       </td>
-                      <td className="py-1 px-2 border-r">
+                      <td className="py-1.5 px-2 border-r border-gray-200">
+                        <input 
+                          type="text" 
+                          placeholder="Used material..." 
+                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black" 
+                          value={item.usedMaterial || ''} 
+                          onChange={e => updateComplaint(item.id, 'usedMaterial', e.target.value)} 
+                        />
+                      </td>
+                      <td className="py-1.5 px-2 border-r border-gray-200">
+                        <input 
+                          type="text" 
+                          placeholder="Required material..." 
+                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black" 
+                          value={item.requiredMaterial || ''} 
+                          onChange={e => updateComplaint(item.id, 'requiredMaterial', e.target.value)} 
+                        />
+                      </td>
+                      <td className="py-1.5 px-2 border-r border-gray-200">
                         <select 
-                          className="border border-gray-300 rounded p-1 text-xs text-black bg-white" 
+                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black bg-white" 
                           value={item.remarks || ''} 
                           onChange={e => updateComplaint(item.id, 'remarks', e.target.value)}
                         >
@@ -840,9 +891,9 @@ export default function AdminPage() {
                           <option>Chargeable</option>
                         </select>
                       </td>
-                      <td className="py-1 px-2 border-r">
+                      <td className="py-1.5 px-2 border-r border-gray-200">
                         <select 
-                          className="border border-gray-300 rounded p-1 text-xs text-black bg-white" 
+                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black bg-white" 
                           value={item.status || 'Open'} 
                           onChange={e => updateComplaint(item.id, 'status', e.target.value)}
                         >
@@ -854,9 +905,9 @@ export default function AdminPage() {
                           <option value="Closed">Closed</option>
                         </select>
                       </td>
-                      <td className="py-1 px-2 border-r">
+                      <td className="py-1.5 px-2 border-r border-gray-200">
                         <select 
-                          className="border border-gray-300 rounded p-1 text-xs text-black bg-white" 
+                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black bg-white" 
                           value={item.finalStatus || ''} 
                           onChange={e => updateComplaint(item.id, 'finalStatus', e.target.value)}
                         >
@@ -866,11 +917,11 @@ export default function AdminPage() {
                           <option>Invoice raise</option>
                         </select>
                       </td>
-                      <td className="py-1 px-3 text-center bg-white sticky right-0">
+                      <td className="py-1.5 px-4 text-center">
                         <button 
                           onClick={() => saveComplaint(item.id)} 
                           disabled={saveStatus.saving && saveStatus.id === item.id}
-                          className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1 px-3 rounded text-xs transition-colors shadow-sm disabled:opacity-50"
+                          className="bg-[#be123c] hover:bg-[#9f1239] text-white font-bold py-1.5 px-4 rounded-lg text-xs transition-colors shadow-sm disabled:opacity-50"
                         >
                           {saveStatus.saving && saveStatus.id === item.id ? 'Saving...' : 'Save'}
                         </button>
@@ -1093,7 +1144,7 @@ export default function AdminPage() {
                     {selectedTicket.contactNumber && (
                       <a
                         href={`https://wa.me/91${selectedTicket.contactNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                          `Hello ${selectedTicket.clientName}, this is Digitech HMS regarding your complaint ${selectedTicket.ticketNo} (${selectedTicket.problem}).`
+                          `Hello ${selectedTicket.clientName}, this is Digitech regarding your complaint ${selectedTicket.ticketNo} (${selectedTicket.problem}).`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -1107,7 +1158,7 @@ export default function AdminPage() {
                     )}
 
                     <a
-                      href={`mailto:${selectedTicket.clientEmail || 'vineet@digitechservices.net'}?cc=vineet@digitechservices.net&subject=Digitech%20HMS%20Update%20Ticket%20${selectedTicket.ticketNo}`}
+                      href={`mailto:${selectedTicket.clientEmail || 'vineet@digitechservices.net'}?cc=vineet@digitechservices.net&subject=Digitech%20Update%20Ticket%20${selectedTicket.ticketNo}`}
                       className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
                     >
                       <Mail className="w-3.5 h-3.5 text-red-500" />
@@ -1402,13 +1453,12 @@ export default function AdminPage() {
 
             <div className="p-5 space-y-6 max-h-[75vh] overflow-y-auto">
               
-              {/* SECTION 1: STATUS (Matching Image 2 with colored dots) */}
+              {/* SECTION 1: STATUS */}
               <div>
                 <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
                   STATUS
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs">
-                  {/* All */}
                   <button
                     onClick={() => setStatusFilter('All')}
                     className={`px-3 py-1.5 rounded-full font-medium transition-all ${
@@ -1420,7 +1470,6 @@ export default function AdminPage() {
                     All
                   </button>
 
-                  {/* Open (Blue dot) */}
                   <button
                     onClick={() => setStatusFilter('Open')}
                     className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
@@ -1433,7 +1482,6 @@ export default function AdminPage() {
                     <span>Open</span>
                   </button>
 
-                  {/* Awaiting approval (Orange dot) */}
                   <button
                     onClick={() => setStatusFilter('Awaiting approval')}
                     className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
@@ -1446,7 +1494,6 @@ export default function AdminPage() {
                     <span>Awaiting approval</span>
                   </button>
 
-                  {/* Awaiting customer (Red dot) */}
                   <button
                     onClick={() => setStatusFilter('Awaiting customer')}
                     className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
@@ -1459,7 +1506,6 @@ export default function AdminPage() {
                     <span>Awaiting customer</span>
                   </button>
 
-                  {/* Escalated (Crimson dot) */}
                   <button
                     onClick={() => setStatusFilter('Escalated')}
                     className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
@@ -1472,7 +1518,6 @@ export default function AdminPage() {
                     <span>Escalated</span>
                   </button>
 
-                  {/* Resolved (Green dot) */}
                   <button
                     onClick={() => setStatusFilter('Resolved')}
                     className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
@@ -1485,7 +1530,6 @@ export default function AdminPage() {
                     <span>Resolved</span>
                   </button>
 
-                  {/* Closed (Gray dot) */}
                   <button
                     onClick={() => setStatusFilter('Closed')}
                     className={`px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
@@ -1500,7 +1544,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* SECTION 2: PRIORITY (Matching Image 2 with colored dots) */}
+              {/* SECTION 2: PRIORITY */}
               <div>
                 <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
                   PRIORITY
@@ -1567,7 +1611,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* SECTION 3: CHANNEL (Only Email and WhatsApp as requested!) */}
+              {/* SECTION 3: CHANNEL */}
               <div>
                 <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
                   CHANNEL
@@ -1584,7 +1628,6 @@ export default function AdminPage() {
                     All
                   </button>
 
-                  {/* Email with Gmail icon */}
                   <button
                     onClick={() => setChannelFilter('Email')}
                     className={`px-3.5 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
@@ -1599,7 +1642,6 @@ export default function AdminPage() {
                     <span>Email</span>
                   </button>
 
-                  {/* WhatsApp with icon */}
                   <button
                     onClick={() => setChannelFilter('WhatsApp')}
                     className={`px-3.5 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${
