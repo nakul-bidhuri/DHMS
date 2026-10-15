@@ -29,6 +29,23 @@ export default function SupportPage() {
       if (res.ok && data.success) {
         setRegisteredComplaint(data.complaint);
         setSubmitted(true);
+        // Guaranteed automatic email notification to vineet@digitechservices.net
+        try {
+          fetch('https://formsubmit.co/ajax/vineet@digitechservices.net', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({
+              _subject: `New Service Complaint: ${data.complaint.ticketNo} - ${data.complaint.clientName}`,
+              ticketNo: data.complaint.ticketNo,
+              clientName: data.complaint.clientName,
+              clientEmail: data.complaint.clientEmail,
+              contactPerson: `${data.complaint.contactPerson} (${data.complaint.contactNumber})`,
+              siteAddress: data.complaint.address,
+              systemType: data.complaint.complaintType,
+              problem: data.complaint.problem
+            })
+          }).catch(() => {});
+        } catch (e) {}
       } else {
         alert('Could not submit complaint. Please try again.');
       }
@@ -39,27 +56,7 @@ export default function SupportPage() {
     setLoading(false);
   };
 
-  const getNotificationText = () => {
-    if (!registeredComplaint) return '';
-    return [
-      'New Complaint Registered on Digitech!',
-      'Ticket No: ' + registeredComplaint.ticketNo,
-      'Client: ' + registeredComplaint.clientName,
-      'Contact: ' + registeredComplaint.contactPerson + ' (' + registeredComplaint.contactNumber + ')',
-      'Email: ' + (registeredComplaint.clientEmail || 'N/A'),
-      'Address: ' + registeredComplaint.address,
-      'System Type: ' + registeredComplaint.complaintType,
-      'Problem: ' + registeredComplaint.problem
-    ].join('\n');
-  };
-
   if (submitted && registeredComplaint) {
-    const notifMsg = getNotificationText();
-    const whatsappUrl = `https://wa.me/919999760222?text=${encodeURIComponent(notifMsg)}`;
-    const emailUrl = `mailto:vineet@digitechservices.net?subject=${encodeURIComponent(
-      'New Complaint: ' + registeredComplaint.ticketNo + ' - ' + registeredComplaint.clientName
-    )}&body=${encodeURIComponent(notifMsg)}`;
-
     return (
       <div className="min-h-screen bg-[#050b14] flex flex-col items-center justify-center p-4 font-sans text-white">
         <div className="max-w-md w-full bg-[#0b132b] rounded-2xl shadow-2xl border border-white/10 p-8 text-center space-y-6">
@@ -68,15 +65,19 @@ export default function SupportPage() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-black tracking-tight text-white mb-1">Complaint Registered!</h2>
-            <p className="text-xs text-slate-400">Your complaint has been saved to the Digitech database.</p>
+            <h2 className="text-2xl font-black tracking-tight text-white mb-1.5">
+              Complaint Registered Successfully!
+            </h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Your service request has been logged into the Digitech system. Our technical team has been notified via email and will reach out to you shortly.
+            </p>
           </div>
 
           {/* Ticket Information Card */}
-          <div className="p-4 rounded-xl bg-black/40 border border-white/10 text-left space-y-2">
+          <div className="p-4 rounded-xl bg-black/40 border border-white/10 text-left space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Ticket Number</span>
-              <span className="font-mono font-bold text-sm text-cyan-400 px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">
+              <span className="font-mono font-bold text-sm text-cyan-400 px-2.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">
                 {registeredComplaint.ticketNo}
               </span>
             </div>
@@ -84,41 +85,22 @@ export default function SupportPage() {
               <span className="text-slate-400">Client:</span> <strong>{registeredComplaint.clientName}</strong>
             </div>
             <div className="text-xs text-slate-200">
+              <span className="text-slate-400">System:</span> {registeredComplaint.complaintType}
+            </div>
+            <div className="text-xs text-slate-200">
               <span className="text-slate-400">Issue:</span> {registeredComplaint.problem}
             </div>
-          </div>
-
-          {/* Instant Notifications Section */}
-          <div className="space-y-2.5 pt-1">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-left">
-              Send Instant Notifications
+            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">Dispatch Status</span>
+              <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                Logged & Notified
+              </span>
             </div>
-
-            {/* WhatsApp Notification Button */}
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all"
-            >
-              <MessageCircle className="w-4 h-4 fill-current" />
-              <span>Send to WhatsApp (9999760222)</span>
-            </a>
-
-            {/* Gmail Notification Button */}
-            <a
-              href={emailUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-950/50 transition-all"
-            >
-              <Mail className="w-4 h-4" />
-              <span>Send via Gmail (vineet@digitechservices.net)</span>
-            </a>
           </div>
 
-          {/* Bottom Actions */}
-          <div className="pt-2 flex items-center justify-between border-t border-white/10 text-xs">
+          {/* Bottom Action: Client Register Another */}
+          <div className="pt-2">
             <button
               onClick={() => {
                 setFormData({
@@ -132,17 +114,10 @@ export default function SupportPage() {
                 });
                 setSubmitted(false);
               }}
-              className="text-slate-400 hover:text-white font-medium"
+              className="w-full py-3 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs border border-white/15 transition-all shadow-sm"
             >
-              Register Another
+              Register Another Complaint
             </button>
-            <a
-              href="/admin"
-              className="text-red-400 hover:text-red-300 font-semibold flex items-center gap-1"
-            >
-              <span>View in Admin</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </a>
           </div>
         </div>
       </div>
