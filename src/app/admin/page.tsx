@@ -25,8 +25,18 @@ import {
   ShieldAlert,
   Table, 
   LayoutGrid, 
-  Layers
+  Layers,
+  Boxes,
+  ArrowRightLeft,
+  UserX,
+  AlertOctagon,
+  RotateCw,
+  Sparkles,
+  Send,
+  UserCheck,
+  RotateCcw
 } from 'lucide-react';
+import ToolsInventoryView, { ROSTER_ENGINEERS, ENGINEER_PHONE } from '@/components/ToolsInventoryView';
 
 interface ComplaintItem {
   id: number | string;
@@ -42,7 +52,13 @@ interface ComplaintItem {
   channel?: string;
   assignedDate?: string;
   engineer1?: string;
+  engineer1Status?: 'assigned' | 'quitted' | 'completed';
+  engineer1QuitReason?: string;
   engineer2?: string;
+  engineer2Status?: 'assigned' | 'quitted' | 'completed';
+  engineer2QuitReason?: string;
+  adminEscalated?: boolean;
+  escalationNotes?: string;
   problem?: string;
   finding?: string;
   actionTaken?: string;
@@ -53,7 +69,7 @@ interface ComplaintItem {
   remarks?: string;
   status?: string;
   finalStatus?: string;
-  [key: string]: string | number | undefined;
+  [key: string]: string | number | boolean | undefined;
 }
 
 // Digitech Logo Component using official logo.png from website
@@ -177,6 +193,124 @@ export default function AdminPage() {
       console.error(err);
       setSaveStatus({ id, saving: false, message: 'Failed to save.' });
       showToast('Error saving changes to database.');
+    }
+  };
+
+  // 2-Tier Automated Quit & Round-Robin Escalation State
+  const [quitModalEng1, setQuitModalEng1] = useState<{ isOpen: boolean; ticket: ComplaintItem | null; reason: string }>({
+    isOpen: false,
+    ticket: null,
+    reason: ''
+  });
+
+  const [quitModalEng2, setQuitModalEng2] = useState<{ isOpen: boolean; ticket: ComplaintItem | null; reason: string }>({
+    isOpen: false,
+    ticket: null,
+    reason: ''
+  });
+
+  // Calculate Next Engineer via Round-Robin from ROSTER_ENGINEERS
+  const getNextRoundRobinEngineer = (currentEngineer: string): string => {
+    const idx = ROSTER_ENGINEERS.indexOf(currentEngineer as any);
+    if (idx === -1) return ROSTER_ENGINEERS[0];
+    return ROSTER_ENGINEERS[(idx + 1) % ROSTER_ENGINEERS.length];
+  };
+
+  // Generate WhatsApp Dispatch URL to universal engineer number: 8920458516
+  const getEngineerWhatsAppUrl = (
+    engineerName: string, 
+    ticket: ComplaintItem, 
+    actionType: 'NEW' | 'HANDOVER' | 'ADMIN'
+  ) => {
+    let title = '🚨 *DIGITECH HMS: SERVICE TASK ASSIGNMENT*';
+    if (actionType === 'HANDOVER') title = '🔄 *DIGITECH HMS: RE-ASSIGNED DISPATCH (ROUND-ROBIN)*';
+    if (actionType === 'ADMIN') title = '⚠️ *DIGITECH HMS: ADMIN ESCALATION ALERT (CRITICAL P1)*';
+
+    const msg = [
+      title,
+      '------------------------------------',
+      `👨‍🔧 *Engineer:* ${engineerName}`,
+      `📱 *Universal Dispatch:* +91 ${ENGINEER_PHONE}`,
+      `🎫 *Ticket No:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
+      `⚡ *Priority:* ${ticket.priority || 'P2'}`,
+      `🏢 *Client:* ${ticket.clientName || 'N/A'}`,
+      `📍 *Site Address:* ${ticket.address || 'N/A'}`,
+      `👤 *Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
+      `⚠️ *Reported Problem:* ${ticket.problem || 'N/A'}`,
+      ticket.engineer1QuitReason ? `\n📝 *Prev Engineer (${ticket.engineer1}) Quit Reason:*\n${ticket.engineer1QuitReason}` : '',
+      ticket.engineer2QuitReason ? `\n⚠️ *Engineer 2 (${ticket.engineer2}) Quit Reason:*\n${ticket.engineer2QuitReason}` : '',
+      '------------------------------------',
+      'Please confirm receipt and update field attendance upon arrival.'
+    ].filter(Boolean).join('\n');
+
+    return `https://wa.me/91${ENGINEER_PHONE}?text=${encodeURIComponent(msg)}`;
+  };
+
+  // Step 1: Engineer 1 Quits -> System automatically assigns Engineer 2 via Round-Robin
+  const handleEngineer1Quit = async () => {
+    const ticket = quitModalEng1.ticket;
+    if (!ticket) return;
+
+    const currentEng1 = ticket.engineer1 || 'Abdul';
+    const nextEng2 = getNextRoundRobinEngineer(currentEng1);
+    const reason = quitModalEng1.reason.trim() || 'Engineer unable to resolve issue on site.';
+
+    const updatedTicket: ComplaintItem = {
+      ...ticket,
+      engineer1Status: 'quitted',
+      engineer1QuitReason: reason,
+      engineer2: nextEng2,
+      engineer2Status: 'assigned',
+      remarks: ticket.remarks ? `${ticket.remarks} | Eng 1 (${currentEng1}) quit: ${reason}` : `Eng 1 (${currentEng1}) quit: ${reason}`
+    };
+
+    setComplaints(prev => prev.map(c => c.id === ticket.id ? updatedTicket : c));
+    setQuitModalEng1({ isOpen: false, ticket: null, reason: '' });
+
+    try {
+      await fetch('/api/complaints', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTicket)
+      });
+      showToast(`Engineer 1 quit recorded. Auto assigned to ${nextEng2} via Round-Robin!`);
+    } catch (e) {
+      console.error(e);
+      showToast('Error saving handover to server.');
+    }
+  };
+
+  // Step 2: Engineer 2 Quits -> Automatically escalate to Admin with P1 Critical Priority
+  const handleEngineer2Quit = async () => {
+    const ticket = quitModalEng2.ticket;
+    if (!ticket) return;
+
+    const currentEng2 = ticket.engineer2 || 'Sharukh';
+    const reason = quitModalEng2.reason.trim() || 'Second engineer unable to resolve. Technical blocker encountered.';
+
+    const updatedTicket: ComplaintItem = {
+      ...ticket,
+      engineer2Status: 'quitted',
+      engineer2QuitReason: reason,
+      adminEscalated: true,
+      status: 'Escalated',
+      priority: 'P1',
+      remarks: ticket.remarks ? `${ticket.remarks} | Eng 2 (${currentEng2}) quit: ${reason} [ESCALATED TO ADMIN]` : `Eng 2 (${currentEng2}) quit: ${reason} [ESCALATED TO ADMIN]`
+    };
+
+    setComplaints(prev => prev.map(c => c.id === ticket.id ? updatedTicket : c));
+    setQuitModalEng2({ isOpen: false, ticket: null, reason: '' });
+
+    try {
+      await fetch('/api/complaints', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTicket)
+      });
+      showToast(`⚠️ Task Escalated to Admin! Priority raised to P1.`);
+    } catch (e) {
+      console.error(e);
+      showToast('Error saving escalation to server.');
     }
   };
 
@@ -479,6 +613,22 @@ export default function AdminPage() {
               <span>Support Escalations</span>
             </button>
 
+            {/* Tools & Equipment Inventory (Positioned directly below Support Escalation) */}
+            <button
+              onClick={() => {
+                setActiveNav('tools');
+                setViewMode('inbox');
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium transition-colors ${
+                activeNav === 'tools' ? 'bg-[#be123c] text-white font-bold shadow' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Boxes className="w-4 h-4 text-emerald-400" />
+                <span>Tools & Equipment</span>
+              </div>
+            </button>
+
             <a
               href="/support"
               target="_blank"
@@ -516,9 +666,11 @@ export default function AdminPage() {
       </aside>
 
       {/* ======================================================== */}
-      {/* 2. OVERVIEW DASHBOARD VIEW (Original Digitech Design)     */}
+      {/* VIEW SWITCHER: TOOLS | OVERVIEW | TABLE | INBOX          */}
       {/* ======================================================== */}
-      {activeNav === 'overview' ? (
+      {activeNav === 'tools' ? (
+        <ToolsInventoryView complaintTickets={complaints} />
+      ) : activeNav === 'overview' ? (
         <div className="flex-1 flex flex-col bg-[#f4f7f9] overflow-y-auto font-sans">
           
           {/* Overview Top Header */}
@@ -1009,37 +1161,72 @@ export default function AdminPage() {
                           onChange={e => updateComplaint(item.id, 'assignedDate', e.target.value)} 
                         />
                       </td>
-                      <td className="py-1.5 px-2 border-r border-gray-200 min-w-[140px]">
-                        <select 
-                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black bg-white" 
-                          value={item.engineer1 || ''} 
-                          onChange={e => updateComplaint(item.id, 'engineer1', e.target.value)}
-                        >
-                          <option value="">Select Engineer</option>
-                          <option>Abdul</option>
-                          <option>Sharukh</option>
-                          <option>Govind</option>
-                          <option>Himanshu</option>
-                          <option>Ashish</option>
-                          <option>Zubair</option>
-                          <option>Other</option>
-                        </select>
+                      {/* Engineer 1 */}
+                      <td className="py-1.5 px-2 border-r border-gray-200 min-w-[170px]">
+                        <div className="flex items-center gap-1">
+                          <select 
+                            className={`w-full border rounded p-1.5 text-xs bg-white ${
+                              item.engineer1Status === 'quitted' ? 'border-red-400 bg-red-50 text-red-800 font-bold' : 'border-gray-300 text-black'
+                            }`}
+                            value={item.engineer1 || ''} 
+                            onChange={e => updateComplaint(item.id, 'engineer1', e.target.value)}
+                          >
+                            <option value="">Select Engineer</option>
+                            {ROSTER_ENGINEERS.map(eng => (
+                              <option key={eng} value={eng}>{eng}</option>
+                            ))}
+                          </select>
+                          {item.engineer1 && (
+                            <a
+                              href={getEngineerWhatsAppUrl(item.engineer1, item, 'NEW')}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`Dispatch to ${item.engineer1} on WhatsApp (+91 ${ENGINEER_PHONE})`}
+                              className="p-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 flex-shrink-0"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                        {item.engineer1Status === 'quitted' && (
+                          <div className="text-[10px] text-red-600 font-bold mt-0.5 truncate" title={item.engineer1QuitReason}>
+                            Quitted: {item.engineer1QuitReason || 'Unable to solve'}
+                          </div>
+                        )}
                       </td>
-                      <td className="py-1.5 px-2 border-r border-gray-200 min-w-[140px]">
-                        <select 
-                          className="w-full border border-gray-300 rounded p-1.5 text-xs text-black bg-white" 
-                          value={item.engineer2 || ''} 
-                          onChange={e => updateComplaint(item.id, 'engineer2', e.target.value)}
-                        >
-                          <option value="">Select Engineer</option>
-                          <option>Abdul</option>
-                          <option>Sharukh</option>
-                          <option>Govind</option>
-                          <option>Himanshu</option>
-                          <option>Ashish</option>
-                          <option>Zubair</option>
-                          <option>Other</option>
-                        </select>
+
+                      {/* Engineer 2 (Round-Robin) */}
+                      <td className="py-1.5 px-2 border-r border-gray-200 min-w-[170px]">
+                        <div className="flex items-center gap-1">
+                          <select 
+                            className={`w-full border rounded p-1.5 text-xs bg-white ${
+                              item.engineer2Status === 'quitted' ? 'border-red-400 bg-red-50 text-red-800 font-bold' : 'border-gray-300 text-black'
+                            }`}
+                            value={item.engineer2 || ''} 
+                            onChange={e => updateComplaint(item.id, 'engineer2', e.target.value)}
+                          >
+                            <option value="">Select Engineer</option>
+                            {ROSTER_ENGINEERS.map(eng => (
+                              <option key={eng} value={eng}>{eng}</option>
+                            ))}
+                          </select>
+                          {item.engineer2 && (
+                            <a
+                              href={getEngineerWhatsAppUrl(item.engineer2, item, item.engineer1Status === 'quitted' ? 'HANDOVER' : 'NEW')}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`Dispatch to ${item.engineer2} on WhatsApp (+91 ${ENGINEER_PHONE})`}
+                              className="p-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 flex-shrink-0"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                        {item.engineer2Status === 'quitted' && (
+                          <div className="text-[10px] text-red-600 font-bold mt-0.5">
+                            Quitted &bull; Escalated to Admin
+                          </div>
+                        )}
                       </td>
                       <td className="py-1.5 px-2 border-r border-gray-200 min-w-[180px]">
                         <input 
@@ -1449,15 +1636,41 @@ export default function AdminPage() {
                       <span className="text-[11px] text-gray-400">Step -02-</span>
                     </div>
 
+                    {/* Level-3 Admin Escalation Notice Banner */}
+                    {(selectedTicket.adminEscalated || selectedTicket.engineer2Status === 'quitted') && (
+                      <div className="p-4 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white shadow-md flex items-start gap-3 border border-red-300 animate-pulse">
+                        <AlertOctagon className="w-5 h-5 flex-shrink-0 mt-0.5 text-white" />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-xs tracking-wider uppercase bg-black/25 px-2 py-0.5 rounded">
+                              LEVEL-3 CRITICAL ESCALATION TO ADMIN
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-white text-red-700">
+                              P1 URGENT
+                            </span>
+                          </div>
+                          <p className="text-xs text-red-100 mt-1.5 leading-relaxed">
+                            Both <strong>Engineer 1 ({selectedTicket.engineer1 || 'Assigned'})</strong> and <strong>Engineer 2 ({selectedTicket.engineer2 || 'Assigned'})</strong> quitted this task. The ticket has been automatically elevated to <strong>P1 Critical</strong> and routed to <strong>Tech Escalations</strong> for Admin intervention.
+                          </p>
+                          {selectedTicket.engineer2QuitReason && (
+                            <div className="mt-2 p-2 rounded-lg bg-black/30 text-[11px] font-mono text-red-100 border border-white/10">
+                              <strong>Engineer 2 Quitting Blocker:</strong> {selectedTicket.engineer2QuitReason}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Ticket Status Meta Strip */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                       <div>
                         <label className="text-gray-600 font-medium block mb-1">Priority</label>
                         <select
                           value={selectedTicket.priority || 'P2'}
                           onChange={e => updateComplaint(selectedTicket.id, 'priority', e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                          className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500 font-semibold"
                         >
-                          <option value="P1">P1 - Critical</option>
+                          <option value="P1">P1 - Critical (Urgent)</option>
                           <option value="P2">P2 - High</option>
                           <option value="P3">P3 - Medium</option>
                           <option value="P4">P4 - Low</option>
@@ -1469,7 +1682,7 @@ export default function AdminPage() {
                         <select
                           value={selectedTicket.status || 'Open'}
                           onChange={e => updateComplaint(selectedTicket.id, 'status', e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                          className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500 font-semibold"
                         >
                           <option value="Open">Open</option>
                           <option value="Awaiting approval">Awaiting approval</option>
@@ -1504,51 +1717,240 @@ export default function AdminPage() {
                           <option value="Invoice raise">Invoice raise</option>
                         </select>
                       </div>
+                    </div>
 
-                      <div>
-                        <label className="text-gray-600 font-medium block mb-1">Engineer 01</label>
-                        <select
-                          value={selectedTicket.engineer1 || ''}
-                          onChange={e => updateComplaint(selectedTicket.id, 'engineer1', e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                        >
-                          <option value="">Select Engineer</option>
-                          <option>Abdul</option>
-                          <option>Sharukh</option>
-                          <option>Govind</option>
-                          <option>Himanshu</option>
-                          <option>Ashish</option>
-                          <option>Zubair</option>
-                          <option>Other</option>
-                        </select>
+                    {/* ======================================================== */}
+                    {/* 2-TIER FIELD ENGINEER WORKFLOW CARDS                     */}
+                    {/* ======================================================== */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                      
+                      {/* CARD 1: ENGINEER 01 (PRIMARY SITE LEAD) */}
+                      <div className={`p-4 rounded-xl border transition-all ${
+                        selectedTicket.engineer1Status === 'quitted'
+                          ? 'border-red-200 bg-red-50/50'
+                          : selectedTicket.engineer1
+                          ? 'border-emerald-200 bg-emerald-50/20'
+                          : 'border-gray-200 bg-gray-50/50'
+                      }`}>
+                        <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-200/70">
+                          <div className="flex items-center gap-2">
+                            <UserCheck className="w-4 h-4 text-emerald-600" />
+                            <span className="font-bold text-xs text-gray-800">
+                              Engineer 01 (Primary Lead)
+                            </span>
+                          </div>
+
+                          {selectedTicket.engineer1Status === 'quitted' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-300">
+                              ❌ Quitted Task
+                            </span>
+                          ) : selectedTicket.engineer1 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">
+                              🟢 Assigned
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                              ⚪ Unassigned
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-3 text-xs">
+                          <div>
+                            <label className="text-gray-500 text-[11px] block mb-1">Select Engineer</label>
+                            <select
+                              value={selectedTicket.engineer1 || ''}
+                              onChange={e => updateComplaint(selectedTicket.id, 'engineer1', e.target.value)}
+                              className="w-full border border-gray-300 rounded-lg p-2 text-xs bg-white text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-rose-500"
+                            >
+                              <option value="">Select Field Engineer</option>
+                              {ROSTER_ENGINEERS.map(eng => (
+                                <option key={eng} value={eng}>{eng}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="p-2 rounded-lg bg-white border border-gray-200 flex items-center justify-between text-[11px]">
+                            <span className="text-gray-500">Universal Contact:</span>
+                            <span className="font-mono font-bold text-gray-800">+91 {ENGINEER_PHONE}</span>
+                          </div>
+
+                          {/* Quitted Notice if Engineer 1 has quitted */}
+                          {selectedTicket.engineer1Status === 'quitted' && (
+                            <div className="p-2.5 rounded-lg bg-red-100/70 border border-red-200 text-red-900 text-[11px] space-y-1">
+                              <div className="font-bold flex items-center gap-1">
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                                <span>Quit Handover Recorded:</span>
+                              </div>
+                              <p className="italic text-red-800">
+                                &ldquo;{selectedTicket.engineer1QuitReason || 'Engineer unable to solve problem.'}&rdquo;
+                              </p>
+                              <div className="text-[10px] text-red-700 font-medium">
+                                Handed over to: <strong>{selectedTicket.engineer2 || 'Next Engineer'}</strong>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            {selectedTicket.engineer1 && (
+                              <a
+                                href={getEngineerWhatsAppUrl(selectedTicket.engineer1, selectedTicket, 'NEW')}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                <span>Dispatch Job (WhatsApp)</span>
+                              </a>
+                            )}
+
+                            {selectedTicket.engineer1 && selectedTicket.engineer1Status !== 'quitted' && (
+                              <button
+                                type="button"
+                                onClick={() => setQuitModalEng1({ isOpen: true, ticket: selectedTicket, reason: '' })}
+                                className="py-1.5 px-3 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] flex items-center gap-1 transition-all"
+                                title="Click if Engineer 1 is unable to solve and quits"
+                              >
+                                <ArrowRightLeft className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Engineer Quits / Handover</span>
+                              </button>
+                            )}
+
+                            {selectedTicket.engineer1Status === 'quitted' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateComplaint(selectedTicket.id, 'engineer1Status', 'assigned');
+                                  updateComplaint(selectedTicket.id, 'engineer1QuitReason', '');
+                                  showToast('Engineer 1 status reset.');
+                                }}
+                                className="py-1 px-2.5 rounded text-[10px] text-gray-500 hover:text-gray-800 underline"
+                              >
+                                Reset Eng 1 Status
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
-                      <div>
-                        <label className="text-gray-600 font-medium block mb-1">Engineer 02</label>
-                        <select
-                          value={selectedTicket.engineer2 || ''}
-                          onChange={e => updateComplaint(selectedTicket.id, 'engineer2', e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                        >
-                          <option value="">Select Engineer</option>
-                          <option>Abdul</option>
-                          <option>Sharukh</option>
-                          <option>Govind</option>
-                          <option>Himanshu</option>
-                          <option>Ashish</option>
-                          <option>Zubair</option>
-                          <option>Other</option>
-                        </select>
+                      {/* CARD 2: ENGINEER 02 (ROUND-ROBIN SECONDARY) */}
+                      <div className={`p-4 rounded-xl border transition-all ${
+                        selectedTicket.engineer2Status === 'quitted'
+                          ? 'border-red-300 bg-red-50/70 ring-1 ring-red-300'
+                          : selectedTicket.engineer2
+                          ? 'border-blue-200 bg-blue-50/20'
+                          : 'border-dashed border-gray-300 bg-gray-50/30'
+                      }`}>
+                        <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-200/70">
+                          <div className="flex items-center gap-2">
+                            <RotateCw className="w-4 h-4 text-blue-600" />
+                            <span className="font-bold text-xs text-gray-800">
+                              Engineer 02 (Round-Robin Handover)
+                            </span>
+                          </div>
+
+                          {selectedTicket.engineer2Status === 'quitted' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-300">
+                              ❌ Quitted & Admin Escalated
+                            </span>
+                          ) : selectedTicket.engineer2 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-300">
+                              🔄 Round-Robin Assigned
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">
+                              Standby (if Eng 1 quits)
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-3 text-xs">
+                          <div>
+                            <label className="text-gray-500 text-[11px] block mb-1">
+                              Engineer 02 Name
+                            </label>
+                            <select
+                              value={selectedTicket.engineer2 || ''}
+                              onChange={e => updateComplaint(selectedTicket.id, 'engineer2', e.target.value)}
+                              className="w-full border border-gray-300 rounded-lg p-2 text-xs bg-white text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-rose-500"
+                            >
+                              <option value="">Awaiting Round-Robin Assignment</option>
+                              {ROSTER_ENGINEERS.map(eng => (
+                                <option key={eng} value={eng}>{eng}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="p-2 rounded-lg bg-white border border-gray-200 flex items-center justify-between text-[11px]">
+                            <span className="text-gray-500">Universal Contact:</span>
+                            <span className="font-mono font-bold text-gray-800">+91 {ENGINEER_PHONE}</span>
+                          </div>
+
+                          {/* Notice / Status */}
+                          {selectedTicket.engineer2Status === 'quitted' ? (
+                            <div className="p-2.5 rounded-lg bg-red-100 border border-red-300 text-red-900 text-[11px] space-y-1">
+                              <div className="font-bold flex items-center gap-1">
+                                <AlertOctagon className="w-3.5 h-3.5 text-red-600" />
+                                <span>Engineer 2 Also Quitted:</span>
+                              </div>
+                              <p className="italic text-red-800">
+                                &ldquo;{selectedTicket.engineer2QuitReason || 'Technical blocker encountered.'}&rdquo;
+                              </p>
+                              <div className="text-[10px] font-bold text-red-700 uppercase">
+                                ⚠️ Escalated to Admin (Level-3 P1 Intervention)
+                              </div>
+                            </div>
+                          ) : !selectedTicket.engineer2 ? (
+                            <div className="p-2 rounded-lg bg-gray-100/70 border border-gray-200 text-gray-500 text-[11px]">
+                              ℹ️ Round-Robin backup automatically activates with next available engineer if Engineer 1 cannot resolve on site.
+                            </div>
+                          ) : null}
+
+                          {/* Action Buttons for Engineer 2 */}
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            {selectedTicket.engineer2 && (
+                              <a
+                                href={getEngineerWhatsAppUrl(
+                                  selectedTicket.engineer2, 
+                                  selectedTicket, 
+                                  selectedTicket.engineer1Status === 'quitted' ? 'HANDOVER' : 'NEW'
+                                )}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                <span>Dispatch Job (WhatsApp)</span>
+                              </a>
+                            )}
+
+                            {selectedTicket.engineer2 && selectedTicket.engineer2Status !== 'quitted' && (
+                              <button
+                                type="button"
+                                onClick={() => setQuitModalEng2({ isOpen: true, ticket: selectedTicket, reason: '' })}
+                                className="py-1.5 px-3 rounded-lg border border-red-300 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-[11px] flex items-center gap-1 transition-all"
+                                title="Click if Engineer 2 is also unable to solve and quits -> Escalates to Admin"
+                              >
+                                <UserX className="w-3.5 h-3.5 text-red-600" />
+                                <span>Engineer 2 Quits &rarr; Escalate to Admin</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Remarks</label>
+                        <label className="text-gray-600 font-medium block mb-1">Remarks / Warranty</label>
                         <select
                           value={selectedTicket.remarks || ''}
                           onChange={e => updateComplaint(selectedTicket.id, 'remarks', e.target.value)}
                           className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
                         >
-                          <option value="">Select</option>
+                          <option value="">Select Remarks</option>
                           <option>U/W</option>
                           <option>U/AMC</option>
                           <option>Chargeable</option>
@@ -1559,7 +1961,7 @@ export default function AdminPage() {
                         <label className="text-gray-600 font-medium block mb-1">Rectification Type</label>
                         <input
                           type="text"
-                          placeholder="e.g. Hardware replacement"
+                          placeholder="e.g. Hardware replacement, Cable rewire..."
                           value={selectedTicket.rectificationType || ''}
                           onChange={e => updateComplaint(selectedTicket.id, 'rectificationType', e.target.value)}
                           className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
@@ -1876,6 +2278,186 @@ export default function AdminPage() {
               >
                 Apply Filters
               </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 6. MODAL: ENGINEER 1 QUIT -> ROUND-ROBIN HANDOVER        */}
+      {/* ======================================================== */}
+      {quitModalEng1.isOpen && quitModalEng1.ticket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in font-sans">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+            
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-amber-600 to-amber-700 text-white">
+              <div className="flex items-center gap-2">
+                <ArrowRightLeft className="w-5 h-5 text-amber-200" />
+                <div>
+                  <h2 className="text-base font-bold">Engineer 1 Quits: Round-Robin Handover</h2>
+                  <p className="text-[11px] text-amber-100">Step 1 of 2: Automatic handover to next field engineer</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setQuitModalEng1({ isOpen: false, ticket: null, reason: '' })}
+                className="p-1 rounded-lg text-amber-200 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              
+              {/* Ticket & Engineer Details */}
+              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-amber-900 bg-white px-2 py-0.5 rounded border border-amber-200">
+                    {quitModalEng1.ticket.ticketNo || `TKT-${quitModalEng1.ticket.id}`}
+                  </span>
+                  <span className="text-amber-800 font-semibold">{quitModalEng1.ticket.clientName}</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                  <div>
+                    <span className="text-gray-500 block">Current Engineer 1:</span>
+                    <strong className="text-red-700 font-bold text-xs">{quitModalEng1.ticket.engineer1 || 'Abdul'} (Quitting)</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Next Round-Robin Assignee:</span>
+                    <strong className="text-emerald-700 font-bold text-xs">
+                      🔄 {getNextRoundRobinEngineer(quitModalEng1.ticket.engineer1 || 'Abdul')}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quit Reason Input */}
+              <div>
+                <label className="text-gray-700 font-bold block mb-1">
+                  Why is {quitModalEng1.ticket.engineer1 || 'Engineer 1'} unable to resolve this task? *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Describe the diagnosis, physical obstacles, missing specialized gear, or cable path blocker..."
+                  value={quitModalEng1.reason}
+                  onChange={e => setQuitModalEng1({ ...quitModalEng1, reason: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl p-3 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  This note will be logged in ticket remarks and forwarded to the next engineer via WhatsApp (+91 {ENGINEER_PHONE}).
+                </p>
+              </div>
+
+              {/* Informational Box */}
+              <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 text-[11px] flex items-start gap-2">
+                <RotateCw className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                <span>
+                  The system will automatically assign <strong>{getNextRoundRobinEngineer(quitModalEng1.ticket.engineer1 || 'Abdul')}</strong> as Engineer 2 and generate a WhatsApp dispatch message with full diagnostic context.
+                </span>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setQuitModalEng1({ isOpen: false, ticket: null, reason: '' })}
+                  className="px-4 py-2 rounded-xl text-gray-600 hover:bg-gray-100 font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEngineer1Quit}
+                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold transition-all shadow-md flex items-center gap-1.5"
+                >
+                  <ArrowRightLeft className="w-4 h-4" />
+                  <span>Confirm Handover to {getNextRoundRobinEngineer(quitModalEng1.ticket.engineer1 || 'Abdul')}</span>
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 7. MODAL: ENGINEER 2 QUIT -> ESCALATE TO ADMIN           */}
+      {/* ======================================================== */}
+      {quitModalEng2.isOpen && quitModalEng2.ticket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in font-sans">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+            
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-red-600 to-rose-700 text-white">
+              <div className="flex items-center gap-2">
+                <AlertOctagon className="w-5 h-5 text-red-200" />
+                <div>
+                  <h2 className="text-base font-bold">Engineer 2 Quits: Level-3 Escalation to Admin</h2>
+                  <p className="text-[11px] text-red-100">Step 2 of 2: Automatic critical routing to Admin</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setQuitModalEng2({ isOpen: false, ticket: null, reason: '' })}
+                className="p-1 rounded-lg text-red-200 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              
+              {/* Critical Notice */}
+              <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-red-700 font-bold">
+                  <ShieldAlert className="w-4 h-4 text-red-600" />
+                  <span className="uppercase text-[11px] tracking-wider">Critical 2-Tier Escalation Triggered</span>
+                </div>
+                <p className="text-gray-700 leading-relaxed text-[11px]">
+                  Both <strong>Engineer 1 ({quitModalEng2.ticket.engineer1 || 'First Engineer'})</strong> and <strong>Engineer 2 ({quitModalEng2.ticket.engineer2 || 'Second Engineer'})</strong> have quitted this task.
+                </p>
+                <p className="text-red-700 font-bold text-[11px]">
+                  &bull; Ticket Status will change to: <span className="bg-red-100 px-1.5 py-0.5 rounded">Escalated</span><br />
+                  &bull; Priority will be raised to: <span className="bg-red-100 px-1.5 py-0.5 rounded">P1 Critical</span><br />
+                  &bull; Ticket will be flagged under Admin Tech Escalations.
+                </p>
+              </div>
+
+              {/* Quit Reason Input */}
+              <div>
+                <label className="text-gray-700 font-bold block mb-1">
+                  Why is Engineer 2 ({quitModalEng2.ticket.engineer2 || 'Engineer 2'}) unable to complete the service? *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Specify critical component failures, customer refusal, hazardous conditions, or major site rewiring needed..."
+                  value={quitModalEng2.reason}
+                  onChange={e => setQuitModalEng2({ ...quitModalEng2, reason: e.target.value })}
+                  className="w-full border border-gray-300 rounded-xl p-3 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-red-500"
+                />
+              </div>
+
+              {/* Modal Actions */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setQuitModalEng2({ isOpen: false, ticket: null, reason: '' })}
+                  className="px-4 py-2 rounded-xl text-gray-600 hover:bg-gray-100 font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEngineer2Quit}
+                  className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow-md flex items-center gap-1.5"
+                >
+                  <AlertOctagon className="w-4 h-4" />
+                  <span>Confirm Escalation to Admin (P1)</span>
+                </button>
+              </div>
+
             </div>
 
           </div>
