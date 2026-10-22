@@ -26,6 +26,7 @@ import {
   DEFAULT_ENGINEER_PHONE,
   ADMIN_PHONE 
 } from '@/lib/engineers';
+import ToolsInventoryLogo from './ToolsInventoryLogo';
 
 export { ROSTER_ENGINEERS };
 export const ENGINEER_PHONE = DEFAULT_ENGINEER_PHONE;
@@ -367,17 +368,28 @@ export default function ToolsInventoryView({
   const getToolWhatsAppUrl = (tool: ToolItem) => {
     const phone = getEngineerPhone(tool.assignedEngineer);
     const msg = [
-      `🔧 *DIGITECH HMS: TOOL RETURN NOTICE*`,
-      `---------------------------------------`,
-      `👨‍🔧 *Engineer:* ${tool.assignedEngineer}`,
-      `📱 *Contact:* +91 ${phone}`,
-      `🛠️ *Tool Name:* ${tool.toolName}`,
-      `🏷️ *Asset Tag:* ${tool.assetTag}`,
-      `📅 *Issued On:* ${tool.issuedDate}`,
-      `⏰ *Expected Return:* ${tool.expectedReturnDate} ${tool.status === 'Overdue' ? '*(OVERDUE)*' : ''}`,
-      tool.linkedTicket ? `🎫 *Ticket:* ${tool.linkedTicket}` : '',
-      `---------------------------------------`,
-      `Please return this equipment to the Digitech tool locker or report status.`
+      `*========================================*`,
+      `*DIGITECH SERVICES | TOOL RETURN NOTICE*`,
+      `*========================================*`,
+      ``,
+      `*Asset Tag:* [${tool.assetTag}]`,
+      `*Equipment:* ${tool.toolName}`,
+      `*Category:* ${tool.category}`,
+      ``,
+      `*-- [CUSTODY DETAILS] --*`,
+      `*Assigned Engineer:* ${tool.assignedEngineer}`,
+      `*Contact Line:* +91 ${phone}`,
+      `*Issued Date:* ${tool.issuedDate}`,
+      `*Return Due Date:* ${tool.expectedReturnDate} ${tool.status === 'Overdue' ? '*[OVERDUE]*' : ''}`,
+      tool.linkedTicket ? `*Linked Ticket:* ${tool.linkedTicket}` : '',
+      ``,
+      `*-- [DIRECTIVE] --*`,
+      `>> Please return this equipment to the Digitech tool locker.`,
+      `>> If in active field use, please report extension request.`,
+      ``,
+      `*========================================*`,
+      `*DIGITECH HMS ASSET MANAGEMENT*`,
+      `*========================================*`
     ].filter(Boolean).join('\n');
 
     return `https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`;
@@ -405,8 +417,8 @@ export default function ToolsInventoryView({
               Field Asset & Equipment Locker
             </span>
           </div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight mt-1 flex items-center gap-2.5">
-            <Boxes className="w-6 h-6 text-rose-600" />
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight mt-1 flex items-center gap-3">
+            <ToolsInventoryLogo className="w-8 h-8" />
             <span>Tools & Equipment Inventory</span>
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -415,9 +427,9 @@ export default function ToolsInventoryView({
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200">
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Universal Engineer Line: +91 {ENGINEER_PHONE}</span>
+            <span>Asset Locker Online &bull; Direct WhatsApp Tracking</span>
           </div>
 
           <button
@@ -583,32 +595,27 @@ export default function ToolsInventoryView({
                 {filteredTools.length} tools
               </span>
             </div>
-            <span className="text-xs text-gray-400">
-              All engineers dispatched via contact line: <strong className="text-gray-700 font-mono">8920458516</strong>
+            <span className="text-xs text-gray-500 font-medium">
+              Single-page asset tracking &bull; Direct engineer WhatsApp routing
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+          <div className="w-full overflow-hidden">
+            <table className="w-full text-left border-collapse text-xs table-fixed">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-semibold uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-4 min-w-[110px]">Asset Tag</th>
-                  <th className="py-3 px-4 min-w-[240px]">Tool Description</th>
-                  <th className="py-3 px-4 min-w-[130px]">Category</th>
-                  <th className="py-3 px-4 min-w-[160px]">Assigned Engineer</th>
-                  <th className="py-3 px-4 min-w-[110px]">Linked Ticket</th>
-                  <th className="py-3 px-4 min-w-[110px]">Issued Date</th>
-                  <th className="py-3 px-4 min-w-[130px]">Expected Return</th>
-                  <th className="py-3 px-4 min-w-[120px]">Return Status</th>
-                  <th className="py-3 px-4 min-w-[110px]">Condition</th>
-                  <th className="py-3 px-4 text-center min-w-[190px]">Operational Actions</th>
+                  <th className="py-3.5 px-4 w-[34%]">Equipment & Asset</th>
+                  <th className="py-3.5 px-4 w-[22%]">Assigned Engineer</th>
+                  <th className="py-3.5 px-4 w-[15%]">Schedule & Due</th>
+                  <th className="py-3.5 px-4 w-[14%]">Condition & Status</th>
+                  <th className="py-3.5 px-4 w-[15%] text-right pr-5">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 bg-white">
                 {filteredTools.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-gray-400">
-                      <Boxes className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                    <td colSpan={5} className="py-12 text-center text-gray-400">
+                      <ToolsInventoryLogo className="w-10 h-10 mx-auto mb-2 opacity-60" variant="monochrome" />
                       <p className="font-semibold text-gray-600">No tools found matching your filters</p>
                       <p className="text-xs text-gray-400 mt-1">Try clearing your search query or filters</p>
                     </td>
@@ -620,129 +627,131 @@ export default function ToolsInventoryView({
                     const isReturned = item.status === 'Returned';
 
                     return (
-                      <tr key={item.id} className="hover:bg-gray-50/80 transition-colors">
+                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                         
-                        {/* Asset Tag */}
-                        <td className="py-3 px-4 font-mono font-bold text-gray-900">
-                          <span className="px-2 py-1 rounded bg-gray-100 border border-gray-200 text-gray-800">
-                            {item.assetTag}
-                          </span>
-                        </td>
-
-                        {/* Tool Description */}
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-gray-900">{item.toolName}</div>
-                          {item.notes && (
-                            <div className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                              {item.notes}
+                        {/* Col 1: Equipment & Asset */}
+                        <td className="py-3.5 px-4 align-top">
+                          <div className="flex items-start gap-2.5">
+                            <span className="px-2 py-0.5 rounded bg-gray-100 border border-gray-300 font-mono font-bold text-gray-900 text-[11px] flex-shrink-0 mt-0.5">
+                              {item.assetTag}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="font-bold text-gray-900 text-xs leading-snug break-words">
+                                {item.toolName}
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                  {item.category}
+                                </span>
+                                {item.linkedTicket && (
+                                  <span className="font-mono text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                    {item.linkedTicket}
+                                  </span>
+                                )}
+                              </div>
+                              {item.notes && (
+                                <p className="text-[11px] text-gray-500 mt-1 line-clamp-1 italic">
+                                  {item.notes}
+                                </p>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </td>
 
-                        {/* Category */}
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                            {item.category}
-                          </span>
-                        </td>
-
-                        {/* Assigned Engineer */}
-                        <td className="py-3 px-4">
+                        {/* Col 2: Assigned Engineer */}
+                        <td className="py-3.5 px-4 align-top">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-rose-100 text-rose-800 font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                            <div className="w-7 h-7 rounded-full bg-rose-100 text-rose-800 font-bold text-[11px] flex items-center justify-center flex-shrink-0 border border-rose-200">
                               {item.assignedEngineer[0]}
                             </div>
-                            <div>
-                              <div className="font-semibold text-gray-900">{item.assignedEngineer}</div>
-                              <div className="text-[10px] font-mono text-gray-500">
+                            <div className="min-w-0">
+                              <div className="font-bold text-gray-900 truncate">{item.assignedEngineer}</div>
+                              <div className="text-[11px] font-mono text-emerald-700 font-semibold">
                                 +91 {item.engineerContact || getEngineerPhone(item.assignedEngineer)}
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">
+                                Issued: <span className="font-mono text-gray-600">{item.issuedDate}</span>
                               </div>
                             </div>
                           </div>
                         </td>
 
-                        {/* Linked Ticket */}
-                        <td className="py-3 px-4">
-                          {item.linkedTicket ? (
-                            <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                              {item.linkedTicket}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 italic">None</span>
-                          )}
-                        </td>
-
-                        {/* Issued Date */}
-                        <td className="py-3 px-4 font-mono text-gray-700">
-                          {item.issuedDate}
-                        </td>
-
-                        {/* Expected Return */}
-                        <td className="py-3 px-4">
-                          <div className="font-mono text-gray-800">{item.expectedReturnDate}</div>
+                        {/* Col 3: Schedule & Due */}
+                        <td className="py-3.5 px-4 align-top">
+                          <div className="font-mono font-semibold text-gray-900 text-xs">
+                            {item.expectedReturnDate}
+                          </div>
                           {isOverdue && (
-                            <span className="text-[10px] text-rose-600 font-bold flex items-center gap-1 mt-0.5">
-                              <AlertTriangle className="w-3 h-3" /> Overdue
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Status Badge */}
-                        <td className="py-3 px-4">
-                          {isIssued && (
-                            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-300 inline-flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                              Issued
-                            </span>
-                          )}
-                          {isOverdue && (
-                            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-300 inline-flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
-                              Overdue
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 mt-1">
+                              <AlertTriangle className="w-3 h-3 text-rose-600" />
+                              Overdue Return
                             </span>
                           )}
                           {isReturned && (
-                            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 inline-flex items-center gap-1.5">
-                              <Check className="w-3 h-3 text-emerald-600" />
-                              Returned ({item.returnDate})
+                            <span className="text-[10px] text-gray-500 block mt-0.5">
+                              Returned on: <span className="font-mono text-gray-700">{item.returnDate}</span>
+                            </span>
+                          )}
+                          {isIssued && !isOverdue && (
+                            <span className="text-[10px] text-amber-700 block mt-0.5 font-medium">
+                              Active in field
                             </span>
                           )}
                         </td>
 
-                        {/* Condition */}
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            item.condition === 'Good'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : item.condition === 'Fair'
-                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                              : item.condition === 'Needs Service'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
-                          }`}>
-                            {item.condition}
-                          </span>
+                        {/* Col 4: Condition & Status */}
+                        <td className="py-3.5 px-4 align-top space-y-1.5">
+                          <div>
+                            {isIssued && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 inline-flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                Issued
+                              </span>
+                            )}
+                            {isOverdue && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-300 inline-flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+                                Overdue
+                              </span>
+                            )}
+                            {isReturned && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                Returned
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              item.condition === 'Good'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : item.condition === 'Fair'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : item.condition === 'Needs Service'
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                            }`}>
+                              {item.condition}
+                            </span>
+                          </div>
                         </td>
 
-                        {/* Action Buttons */}
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            
-                            {/* WhatsApp Return Reminder routed to engineer's individual number */}
+                        {/* Col 5: Actions */}
+                        <td className="py-3.5 px-4 align-top text-right pr-5">
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
                             {!isReturned && (
                               <a
                                 href={getToolWhatsAppUrl(item)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                title={`Send return reminder on WhatsApp to ${item.assignedEngineer} (+91 ${item.engineerContact || getEngineerPhone(item.assignedEngineer)})`}
-                                className="p-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all flex items-center gap-1 font-semibold text-[11px]"
+                                title={`Send WhatsApp Return Notice to ${item.assignedEngineer} (+91 ${item.engineerContact || getEngineerPhone(item.assignedEngineer)})`}
+                                className="px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all flex items-center gap-1 font-bold text-[11px] shadow-sm"
                               >
-                                <Send className="w-3.5 h-3.5 text-emerald-600" />
-                                <span className="hidden sm:inline">WhatsApp</span>
+                                <Send className="w-3 h-3 text-emerald-600" />
+                                <span>WhatsApp</span>
                               </a>
                             )}
 
-                            {/* Mark as Returned Button */}
                             {!isReturned ? (
                               <button
                                 onClick={() => {
@@ -753,7 +762,7 @@ export default function ToolsInventoryView({
                                 className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-colors shadow-sm flex items-center gap-1"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>Mark Returned</span>
+                                <span>Return</span>
                               </button>
                             ) : (
                               <button
@@ -776,7 +785,6 @@ export default function ToolsInventoryView({
                               </button>
                             )}
 
-                            {/* Delete Tool */}
                             <button
                               onClick={() => handleDeleteTool(item.id, item.assetTag)}
                               className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"

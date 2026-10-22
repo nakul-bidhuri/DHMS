@@ -7,7 +7,7 @@ export const ENGINEERS_ROSTER: Record<string, string> = {
   'Ankush Singh': '8802659421',
   'Govind Kumar': '8130148238',
   'Gurvinder Singh': '8802650942',
-  'Mohd Ayan': '8920458516',
+  'Mohd Ayan': '9999760444',
   'Rajan Digitech': '7600758225',
   'Sameer Saifi': '9311117493',
   'Shahrukh Khan': '7042871709',
@@ -49,7 +49,7 @@ export const ADMIN_NAME = 'Vineet Mishra';
 export const ADMIN_PHONE = '9999760222';
 export const ADMIN_EMAIL = 'vineet@digitechservices.net';
 export const OFFICE_PHONE = '9999760444';
-export const DEFAULT_ENGINEER_PHONE = '8920458516';
+export const DEFAULT_ENGINEER_PHONE = '9999760444';
 
 /**
  * Returns the verified direct WhatsApp contact number for a given engineer.

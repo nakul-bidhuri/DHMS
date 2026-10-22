@@ -37,6 +37,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import ToolsInventoryView from '@/components/ToolsInventoryView';
+import ToolsInventoryLogo from '@/components/ToolsInventoryLogo';
 import { 
   ROSTER_ENGINEERS, 
   ENGINEERS_ROSTER, 
@@ -48,6 +49,20 @@ import {
 
 export { ROSTER_ENGINEERS, ENGINEERS_ROSTER, getEngineerPhone, ADMIN_PHONE, ADMIN_NAME };
 export const ENGINEER_PHONE = DEFAULT_ENGINEER_PHONE;
+
+function FieldInfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="relative inline-flex items-center ml-1 group cursor-help select-none">
+      <span className="w-3.5 h-3.5 rounded-full bg-slate-200 hover:bg-rose-100 text-slate-500 hover:text-rose-600 text-[10px] font-bold inline-flex items-center justify-center transition-colors">
+        i
+      </span>
+      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-50 w-56 p-2 rounded-lg bg-gray-900 text-white text-[11px] leading-tight shadow-xl border border-gray-700 font-normal text-left normal-case">
+        <span>{text}</span>
+        <span className="w-2 h-2 bg-gray-900 rotate-45 -mb-1 mt-1 border-r border-b border-gray-700"></span>
+      </span>
+    </span>
+  );
+}
 
 interface ComplaintItem {
   id: number | string;
@@ -211,21 +226,38 @@ export default function AdminPage() {
   const buildEngineer1WhatsAppUrl = (ticket: ComplaintItem) => {
     const engName = ticket.engineer1 || 'Engineer';
     const phone = getEngineerPhone(engName);
+    const today = new Date().toISOString().split('T')[0];
     const lines = [
-      `🚨 *DIGITECH HMS: PROJECT TASK ASSIGNMENT*`,
-      `----------------------------------------`,
-      `👨‍🔧 *Main Lead Engineer:* ${engName}`,
-      `📱 *Contact Line:* +91 ${phone}`,
-      `🎫 *Ticket No:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
-      `⚡ *Priority:* ${ticket.priority || 'P2'}`,
-      `🏢 *Client:* ${ticket.clientName || 'N/A'}`,
-      `📍 *Site Address:* ${ticket.address || 'N/A'}`,
-      `👤 *Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
-      `⚠️ *Problem / Issue:* ${ticket.problem || 'N/A'}`,
-      `📅 *Assigned Date:* ${ticket.assignedDate || new Date().toISOString().split('T')[0]}`,
-      ticket.engineer2 ? `🤝 *Assisting Helper (Engineer 2):* ${ticket.engineer2} (+91 ${getEngineerPhone(ticket.engineer2)})` : '',
-      `----------------------------------------`,
-      `You are designated as Main Worker / Lead for this site. Please report site attendance upon arrival.`
+      `*========================================*`,
+      `*DIGITECH SERVICES | PROJECT WORK ORDER*`,
+      `*========================================*`,
+      ``,
+      `*Ticket ID:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
+      `*Priority Level:* ${ticket.priority || 'P2'}`,
+      `*Assigned Date:* ${ticket.assignedDate || today}`,
+      ``,
+      `*-- [SITE & CLIENT DETAILS] --*`,
+      `*Client:* ${ticket.clientName || 'N/A'}`,
+      `*Site Address:* ${ticket.address || 'N/A'}`,
+      `*Client Contact:* ${ticket.contactPerson || 'N/A'}`,
+      `*Contact Phone:* ${ticket.contactNumber || 'N/A'}`,
+      ``,
+      `*-- [CREW ASSIGNMENT] --*`,
+      `*Main Lead Engineer:* ${engName}`,
+      `*Contact Line:* +91 ${phone}`,
+      ticket.engineer2 ? `*Assisting Helper (Eng 2):* ${ticket.engineer2} (+91 ${getEngineerPhone(ticket.engineer2)})` : '',
+      ``,
+      `*-- [REPORTED ISSUE] --*`,
+      `>> ${ticket.problem || 'N/A'}`,
+      ``,
+      `*-- [OPERATIONAL DIRECTIVE] --*`,
+      `>> You are designated as Main Worker / Lead for this site.`,
+      `>> Report site arrival upon reach & coordinate with site contact.`,
+      `>> Inspect tools & equipment before starting service.`,
+      ``,
+      `*========================================*`,
+      `*DIGITECH HMS AUTOMATED DISPATCH*`,
+      `*========================================*`
     ].filter(Boolean);
     return `https://wa.me/91${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
   };
@@ -234,20 +266,36 @@ export default function AdminPage() {
   const buildEngineer2WhatsAppUrl = (ticket: ComplaintItem) => {
     const engName = ticket.engineer2 || 'Helper';
     const phone = getEngineerPhone(engName);
+    const today = new Date().toISOString().split('T')[0];
     const lines = [
-      `🤝 *DIGITECH HMS: SITE ASSISTANCE ASSIGNMENT (HELPER)*`,
-      `----------------------------------------`,
-      `👨‍🔧 *Helper Engineer:* ${engName}`,
-      `📱 *Contact Line:* +91 ${phone}`,
-      `🎫 *Ticket No:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
-      `⚡ *Priority:* ${ticket.priority || 'P2'}`,
-      `🏢 *Client:* ${ticket.clientName || 'N/A'}`,
-      `📍 *Site Address:* ${ticket.address || 'N/A'}`,
-      `👤 *Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
-      `⚠️ *Problem / Issue:* ${ticket.problem || 'N/A'}`,
-      `👨‍🔧 *Main Worker to Assist:* ${ticket.engineer1 || 'Assigned Lead'} (+91 ${getEngineerPhone(ticket.engineer1)})`,
-      `----------------------------------------`,
-      `You are assigned to assist ${ticket.engineer1 || 'the Lead Engineer'} on this site project. Please coordinate with him.`
+      `*========================================*`,
+      `*DIGITECH SERVICES | SITE HELPER DISPATCH*`,
+      `*========================================*`,
+      ``,
+      `*Ticket ID:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
+      `*Priority Level:* ${ticket.priority || 'P2'}`,
+      `*Assigned Date:* ${ticket.assignedDate || today}`,
+      ``,
+      `*-- [SITE & CLIENT DETAILS] --*`,
+      `*Client:* ${ticket.clientName || 'N/A'}`,
+      `*Site Address:* ${ticket.address || 'N/A'}`,
+      `*Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
+      ``,
+      `*-- [CREW ASSIGNMENT] --*`,
+      `*Helper Engineer:* ${engName}`,
+      `*Contact Line:* +91 ${phone}`,
+      `*Main Worker to Assist:* ${ticket.engineer1 || 'Assigned Lead'} (+91 ${getEngineerPhone(ticket.engineer1)})`,
+      ``,
+      `*-- [REPORTED ISSUE] --*`,
+      `>> ${ticket.problem || 'N/A'}`,
+      ``,
+      `*-- [OPERATIONAL DIRECTIVE] --*`,
+      `>> You are assigned to assist ${ticket.engineer1 || 'the Lead Engineer'} on this site project.`,
+      `>> Assist in tools handling, cabling, camera testing, and safety.`,
+      ``,
+      `*========================================*`,
+      `*DIGITECH HMS AUTOMATED DISPATCH*`,
+      `*========================================*`
     ].filter(Boolean);
     return `https://wa.me/91${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
   };
@@ -258,21 +306,36 @@ export default function AdminPage() {
     const phone = getEngineerPhone(worker);
     const reason = quitReason || ticket.engineer1QuitReason || 'Worker denied / unable to solve issue on site.';
     const lines = [
-      `🔄 *DIGITECH HMS: ROUND-ROBIN TASK RE-ASSIGNMENT*`,
-      `----------------------------------------`,
-      `👨‍🔧 *New Managing Worker:* ${worker}`,
-      `📱 *Direct Contact:* +91 ${phone}`,
-      `🎫 *Ticket No:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
-      `⚡ *Priority:* ${ticket.priority || 'P2'}`,
-      `🏢 *Client:* ${ticket.clientName || 'N/A'}`,
-      `📍 *Site Address:* ${ticket.address || 'N/A'}`,
-      `👤 *Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
-      `⚠️ *Reported Problem:* ${ticket.problem || 'N/A'}`,
-      `----------------------------------------`,
-      `❌ *Previous Main Worker (${ticket.engineer1 || 'Engineer 1'}) Quit Reason:*`,
-      `"${reason}"`,
-      `----------------------------------------`,
-      `You have been automatically assigned via Round-Robin to take over and manage the whole work. Please report attendance.`
+      `*========================================*`,
+      `*DIGITECH HMS | ROUND-ROBIN TASK RE-ASSIGNMENT*`,
+      `*========================================*`,
+      ``,
+      `*Ticket ID:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
+      `*Priority Level:* ${ticket.priority || 'P2'} (RE-ASSIGNED)`,
+      ``,
+      `*-- [NEW MANAGING LEAD] --*`,
+      `*Assigned Worker:* ${worker}`,
+      `*Direct Line:* +91 ${phone}`,
+      ``,
+      `*-- [SITE & CLIENT DETAILS] --*`,
+      `*Client:* ${ticket.clientName || 'N/A'}`,
+      `*Site Address:* ${ticket.address || 'N/A'}`,
+      `*Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
+      ``,
+      `*-- [HANDOVER / PREVIOUS LEAD QUIT] --*`,
+      `*Previous Lead:* ${ticket.engineer1 || 'Engineer 1'}`,
+      `*Quit / Denial Reason:* "${reason}"`,
+      ``,
+      `*-- [REPORTED ISSUE] --*`,
+      `>> ${ticket.problem || 'N/A'}`,
+      ``,
+      `*-- [OPERATIONAL DIRECTIVE] --*`,
+      `>> You have been automatically assigned via Round-Robin to take over and manage the whole work.`,
+      `>> Please proceed to site immediately and report attendance upon arrival.`,
+      ``,
+      `*========================================*`,
+      `*DIGITECH HMS DISPATCH SYSTEM*`,
+      `*========================================*`
     ];
     return `https://wa.me/91${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
   };
@@ -280,20 +343,31 @@ export default function AdminPage() {
   // Helper: WhatsApp escalation to Admin Vineet Mishra
   const buildAdminEscalationWhatsAppUrl = (ticket: ComplaintItem) => {
     const lines = [
-      `🚨 *DIGITECH HMS: CRITICAL P1 ADMIN ESCALATION*`,
-      `----------------------------------------`,
-      `👤 *Admin Attention:* Vineet Mishra (+91 9999760222)`,
-      `🎫 *Ticket No:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
-      `⚡ *Priority:* P1 CRITICAL`,
-      `🏢 *Client:* ${ticket.clientName || 'N/A'}`,
-      `📍 *Site Address:* ${ticket.address || 'N/A'}`,
-      `👤 *Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
-      `⚠️ *Problem:* ${ticket.problem || 'N/A'}`,
-      `----------------------------------------`,
-      `❌ *Lead Engineer (${ticket.engineer1 || 'Lead'}) Quit:* ${ticket.engineer1QuitReason || 'Denied task'}`,
-      `❌ *Replacement Worker (${ticket.roundRobinEngineer || 'Round-Robin'}) Also Quit:* ${ticket.roundRobinQuitReason || 'Blocked on site'}`,
-      `----------------------------------------`,
-      `Both assigned technicians have quitted. Ticket escalated to Executive Admin for direct intervention.`
+      `*========================================*`,
+      `*DIGITECH HMS | CRITICAL ADMIN ESCALATION*`,
+      `*========================================*`,
+      ``,
+      `*ATTENTION:* Vineet Mishra (Executive Admin)`,
+      `*Ticket ID:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
+      `*Priority Level:* P1 CRITICAL / BLOCKED`,
+      ``,
+      `*-- [SITE & CLIENT DETAILS] --*`,
+      `*Client:* ${ticket.clientName || 'N/A'}`,
+      `*Site Address:* ${ticket.address || 'N/A'}`,
+      `*Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
+      `*Reported Problem:* ${ticket.problem || 'N/A'}`,
+      ``,
+      `*-- [WORKER FAILURE AUDIT] --*`,
+      `>> Lead Worker (${ticket.engineer1 || 'Engineer 1'}): ${ticket.engineer1QuitReason || 'Denied task'}`,
+      `>> Replacement Worker (${ticket.roundRobinEngineer || 'Round-Robin'}): ${ticket.roundRobinQuitReason || 'Blocked on site'}`,
+      ``,
+      `*-- [URGENT EXECUTIVE INTERVENTION] --*`,
+      `Both assigned field technicians have quit this task.`,
+      `Executive Admin intervention required to re-assign or contact client.`,
+      ``,
+      `*========================================*`,
+      `*DIGITECH HMS EXECUTIVE ALERT*`,
+      `*========================================*`
     ];
     return `https://wa.me/919999760222?text=${encodeURIComponent(lines.join('\n'))}`;
   };
@@ -753,7 +827,7 @@ export default function AdminPage() {
               }`}
             >
               <div className="flex items-center gap-3">
-                <Boxes className="w-4 h-4 text-emerald-400" />
+                <ToolsInventoryLogo className="w-4 h-4" variant="monochrome" />
                 <span>Tools & Equipment</span>
               </div>
             </button>
@@ -1720,25 +1794,37 @@ export default function AdminPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                       <div>
-                        <label className="text-gray-500 block mb-1">Client Name</label>
+                        <label className="text-gray-500 mb-1 flex items-center">
+                          <span>Client Name</span>
+                          <FieldInfoTooltip text="Official organization or registered client account logging the service call." />
+                        </label>
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-900 font-semibold">
                           {selectedTicket.clientName || 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <label className="text-gray-500 block mb-1">Email Address</label>
+                        <label className="text-gray-500 mb-1 flex items-center">
+                          <span>Email Address</span>
+                          <FieldInfoTooltip text="Registered email for automated dispatch confirmation & ticket status updates." />
+                        </label>
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 truncate">
                           {selectedTicket.clientEmail || 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <label className="text-gray-500 block mb-1">Contact Person</label>
+                        <label className="text-gray-500 mb-1 flex items-center">
+                          <span>Contact Person</span>
+                          <FieldInfoTooltip text="Authorized on-site coordinator / facility manager present on premise." />
+                        </label>
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800">
                           {selectedTicket.contactPerson || 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <label className="text-gray-500 block mb-1">Contact Phone</label>
+                        <label className="text-gray-500 mb-1 flex items-center">
+                          <span>Contact Phone</span>
+                          <FieldInfoTooltip text="Direct mobile line of site coordinator for engineer coordination upon arrival." />
+                        </label>
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 font-mono">
                           {selectedTicket.contactNumber || 'N/A'}
                         </div>
@@ -1747,14 +1833,20 @@ export default function AdminPage() {
 
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                       <div className="md:col-span-1">
-                        <label className="text-gray-500 block mb-1">Site Address</label>
+                        <label className="text-gray-500 mb-1 flex items-center">
+                          <span>Site Address</span>
+                          <FieldInfoTooltip text="Exact physical facility location where CCTV cameras and equipment are installed." />
+                        </label>
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 flex items-start gap-1.5">
                           <MapPin className="w-3.5 h-3.5 text-red-500 mt-0.5 flex-shrink-0" />
                           <span>{selectedTicket.address || 'N/A'}</span>
                         </div>
                       </div>
                       <div className="md:col-span-2">
-                        <label className="text-gray-500 block mb-1">Problem / Complaint</label>
+                        <label className="text-gray-500 mb-1 flex items-center">
+                          <span>Problem / Complaint</span>
+                          <FieldInfoTooltip text="Primary fault description, camera outage, or service request logged by client." />
+                        </label>
                         <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 leading-relaxed min-h-[60px]">
                           {selectedTicket.problem || 'No description provided.'}
                         </div>
@@ -1804,7 +1896,10 @@ export default function AdminPage() {
                     {/* Ticket Status Meta Strip */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Priority</label>
+                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                          <span>Priority</span>
+                          <FieldInfoTooltip text="SLA Urgency classification: P1 (Critical Outage), P2 (High), P3 (Medium), P4 (Routine Maintenance)." />
+                        </label>
                         <select
                           value={selectedTicket.priority || 'P2'}
                           onChange={e => updateComplaint(selectedTicket.id, 'priority', e.target.value)}
@@ -1818,7 +1913,10 @@ export default function AdminPage() {
                       </div>
 
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Status</label>
+                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                          <span>Status</span>
+                          <FieldInfoTooltip text="Current workflow lifecycle stage of the ticket in the HMS tracking system." />
+                        </label>
                         <select
                           value={selectedTicket.status || 'Open'}
                           onChange={e => updateComplaint(selectedTicket.id, 'status', e.target.value)}
@@ -1835,7 +1933,10 @@ export default function AdminPage() {
                       </div>
 
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Assigned Date</label>
+                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                          <span>Assigned Date</span>
+                          <FieldInfoTooltip text="Scheduled target execution date for field engineer site attendance." />
+                        </label>
                         <input
                           type="date"
                           value={selectedTicket.assignedDate || ''}
@@ -1845,7 +1946,10 @@ export default function AdminPage() {
                       </div>
 
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Final Status</label>
+                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                          <span>Final Status</span>
+                          <FieldInfoTooltip text="Operational & commercial closure state (Complete, Quotation sent, Invoice raise)." />
+                        </label>
                         <select
                           value={selectedTicket.finalStatus || ''}
                           onChange={e => updateComplaint(selectedTicket.id, 'finalStatus', e.target.value)}
@@ -1900,7 +2004,10 @@ export default function AdminPage() {
 
                         <div className="space-y-3 text-xs">
                           <div>
-                            <label className="text-gray-500 text-[11px] block mb-1">Select Main Engineer</label>
+                            <label className="text-gray-500 text-[11px] mb-1 flex items-center">
+                              <span>Select Main Engineer</span>
+                              <FieldInfoTooltip text="Primary lead technician responsible for executing the site work order and directing operations." />
+                            </label>
                             <select
                               value={selectedTicket.engineer1 || ''}
                               onChange={e => updateComplaint(selectedTicket.id, 'engineer1', e.target.value)}
@@ -2015,8 +2122,9 @@ export default function AdminPage() {
 
                         <div className="space-y-3 text-xs">
                           <div>
-                            <label className="text-gray-500 text-[11px] block mb-1">
-                              Select Helper Engineer
+                            <label className="text-gray-500 text-[11px] mb-1 flex items-center">
+                              <span>Select Helper Engineer</span>
+                              <FieldInfoTooltip text="Secondary technician assigned to assist the main lead with cabling, physical mountings, and tools." />
                             </label>
                             <select
                               value={selectedTicket.engineer2 || ''}
@@ -2165,7 +2273,10 @@ export default function AdminPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Remarks / Warranty</label>
+                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                          <span>Remarks / Warranty</span>
+                          <FieldInfoTooltip text="Commercial entitlement classification: U/W (Under Warranty), U/AMC (Annual Maintenance Contract), Chargeable." />
+                        </label>
                         <select
                           value={selectedTicket.remarks || ''}
                           onChange={e => updateComplaint(selectedTicket.id, 'remarks', e.target.value)}
@@ -2179,7 +2290,10 @@ export default function AdminPage() {
                       </div>
 
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Rectification Type</label>
+                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                          <span>Rectification Type</span>
+                          <FieldInfoTooltip text="Technical categorization of the repair (e.g. Hardware replacement, Cable rewire, Configuration)." />
+                        </label>
                         <input
                           type="text"
                           placeholder="e.g. Hardware replacement, Cable rewire..."
@@ -2192,7 +2306,10 @@ export default function AdminPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Finding / Observation / Reason</label>
+                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                          <span>Finding / Observation / Reason</span>
+                          <FieldInfoTooltip text="Root-cause diagnostic finding identified by engineer upon physical inspection." />
+                        </label>
                         <input
                           type="text"
                           placeholder="Findings..."
@@ -2202,7 +2319,10 @@ export default function AdminPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Solution Provided / Action Taken</label>
+                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                          <span>Solution Provided / Action Taken</span>
+                          <FieldInfoTooltip text="Specific engineering steps performed on-site to restore camera system functionality." />
+                        </label>
                         <input
                           type="text"
                           placeholder="Actions taken..."
@@ -2215,7 +2335,10 @@ export default function AdminPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Used Material</label>
+                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                          <span>Used Material</span>
+                          <FieldInfoTooltip text="Bill of materials & spare parts consumed on site from inventory." />
+                        </label>
                         <input
                           type="text"
                           placeholder="Material used during servicing..."
@@ -2225,7 +2348,10 @@ export default function AdminPage() {
                         />
                       </div>
                       <div>
-                        <label className="text-gray-600 font-medium block mb-1">Required Material</label>
+                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                          <span>Required Material</span>
+                          <FieldInfoTooltip text="Spare components required for subsequent follow-up visits or commercial quotation." />
+                        </label>
                         <input
                           type="text"
                           placeholder="Spare parts required for next visit..."
