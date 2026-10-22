@@ -33,9 +33,8 @@ import {
   RotateCw,
   Sparkles,
   Send,
-  UserCheck,
-  RotateCcw
 } from 'lucide-react';
+import ToolsInventoryView from '@/components/ToolsInventoryView';
 
 export const ROSTER_ENGINEERS = ['Abdul', 'Sharukh', 'Govind', 'Himanshu', 'Ashish', 'Zubair'] as const;
 export const ENGINEER_PHONE = '8920458516';
@@ -660,6 +659,22 @@ export default function AdminPage() {
               <span>Support Escalations</span>
             </button>
 
+            {/* Tools & Equipment Inventory (Positioned directly below Support Escalation) */}
+            <button
+              onClick={() => {
+                setActiveNav('tools');
+                setViewMode('inbox');
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium transition-colors ${
+                activeNav === 'tools' ? 'bg-[#be123c] text-white font-bold shadow' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Boxes className="w-4 h-4 text-emerald-400" />
+                <span>Tools & Equipment</span>
+              </div>
+            </button>
+
             <a
               href="/support"
               target="_blank"
@@ -697,9 +712,11 @@ export default function AdminPage() {
       </aside>
 
       {/* ======================================================== */}
-      {/* VIEW SWITCHER: OVERVIEW | TABLE | INBOX                  */}
+      {/* VIEW SWITCHER: TOOLS | OVERVIEW | TABLE | INBOX          */}
       {/* ======================================================== */}
-      {activeNav === 'overview' ? (
+      {activeNav === 'tools' ? (
+        <ToolsInventoryView complaintTickets={complaints} />
+      ) : activeNav === 'overview' ? (
         <div className="flex-1 flex flex-col bg-[#f4f7f9] overflow-y-auto font-sans">
           
           {/* Overview Top Header */}
