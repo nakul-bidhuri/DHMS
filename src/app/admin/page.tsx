@@ -33,6 +33,8 @@ import {
   RotateCw,
   Sparkles,
   Send,
+  UserCheck,
+  RotateCcw
 } from 'lucide-react';
 import ToolsInventoryView from '@/components/ToolsInventoryView';
 
