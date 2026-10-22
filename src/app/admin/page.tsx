@@ -37,9 +37,17 @@ import {
   RotateCcw
 } from 'lucide-react';
 import ToolsInventoryView from '@/components/ToolsInventoryView';
+import { 
+  ROSTER_ENGINEERS, 
+  ENGINEERS_ROSTER, 
+  getEngineerPhone, 
+  DEFAULT_ENGINEER_PHONE,
+  ADMIN_PHONE,
+  ADMIN_NAME 
+} from '@/lib/engineers';
 
-export const ROSTER_ENGINEERS = ['Abdul', 'Sharukh', 'Govind', 'Himanshu', 'Ashish', 'Zubair'] as const;
-export const ENGINEER_PHONE = '8920458516';
+export { ROSTER_ENGINEERS, ENGINEERS_ROSTER, getEngineerPhone, ADMIN_PHONE, ADMIN_NAME };
+export const ENGINEER_PHONE = DEFAULT_ENGINEER_PHONE;
 
 interface ComplaintItem {
   id: number | string;
@@ -199,52 +207,99 @@ export default function AdminPage() {
     setComplaints(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
   };
 
-  // Helper: Construct WhatsApp task assignment message for Main Worker & Helper
-  const buildAssignmentWhatsAppUrl = (ticket: ComplaintItem) => {
+  // Helper: WhatsApp task assignment for Engineer 1 (Main Lead) -> routed to their own phone number
+  const buildEngineer1WhatsAppUrl = (ticket: ComplaintItem) => {
+    const engName = ticket.engineer1 || 'Engineer';
+    const phone = getEngineerPhone(engName);
     const lines = [
       `🚨 *DIGITECH HMS: PROJECT TASK ASSIGNMENT*`,
       `----------------------------------------`,
+      `👨‍🔧 *Main Lead Engineer:* ${engName}`,
+      `📱 *Contact Line:* +91 ${phone}`,
       `🎫 *Ticket No:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
       `⚡ *Priority:* ${ticket.priority || 'P2'}`,
       `🏢 *Client:* ${ticket.clientName || 'N/A'}`,
       `📍 *Site Address:* ${ticket.address || 'N/A'}`,
-      `👤 *Contact Person:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
+      `👤 *Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
       `⚠️ *Problem / Issue:* ${ticket.problem || 'N/A'}`,
       `📅 *Assigned Date:* ${ticket.assignedDate || new Date().toISOString().split('T')[0]}`,
+      ticket.engineer2 ? `🤝 *Assisting Helper (Engineer 2):* ${ticket.engineer2} (+91 ${getEngineerPhone(ticket.engineer2)})` : '',
       `----------------------------------------`,
-      `👨‍🔧 *Main Worker (Engineer 1):* ${ticket.engineer1 || 'Not assigned'}`,
-      `🤝 *Helper Worker (Engineer 2):* ${ticket.engineer2 || 'None assigned'}`,
-      `📱 *Universal Contact:* +91 ${ENGINEER_PHONE}`,
-      `----------------------------------------`,
-      `Please coordinate together and report site attendance upon arrival.`
-    ];
-    return `https://wa.me/91${ENGINEER_PHONE}?text=${encodeURIComponent(lines.join('\n'))}`;
+      `You are designated as Main Worker / Lead for this site. Please report site attendance upon arrival.`
+    ].filter(Boolean);
+    return `https://wa.me/91${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
   };
 
-  // Helper: Construct WhatsApp re-assignment message for replacement worker
-  const buildRoundRobinWhatsAppUrl = (ticket: ComplaintItem, newWorker: string, quitReason: string) => {
+  // Helper: WhatsApp task assignment for Engineer 2 (Helper) -> routed to their own phone number
+  const buildEngineer2WhatsAppUrl = (ticket: ComplaintItem) => {
+    const engName = ticket.engineer2 || 'Helper';
+    const phone = getEngineerPhone(engName);
+    const lines = [
+      `🤝 *DIGITECH HMS: SITE ASSISTANCE ASSIGNMENT (HELPER)*`,
+      `----------------------------------------`,
+      `👨‍🔧 *Helper Engineer:* ${engName}`,
+      `📱 *Contact Line:* +91 ${phone}`,
+      `🎫 *Ticket No:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
+      `⚡ *Priority:* ${ticket.priority || 'P2'}`,
+      `🏢 *Client:* ${ticket.clientName || 'N/A'}`,
+      `📍 *Site Address:* ${ticket.address || 'N/A'}`,
+      `👤 *Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
+      `⚠️ *Problem / Issue:* ${ticket.problem || 'N/A'}`,
+      `👨‍🔧 *Main Worker to Assist:* ${ticket.engineer1 || 'Assigned Lead'} (+91 ${getEngineerPhone(ticket.engineer1)})`,
+      `----------------------------------------`,
+      `You are assigned to assist ${ticket.engineer1 || 'the Lead Engineer'} on this site project. Please coordinate with him.`
+    ].filter(Boolean);
+    return `https://wa.me/91${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
+  };
+
+  // Helper: WhatsApp re-assignment for Round-Robin replacement worker -> routed to their phone
+  const buildRoundRobinWhatsAppUrl = (ticket: ComplaintItem, newWorker?: string, quitReason?: string) => {
+    const worker = newWorker || ticket.roundRobinEngineer || 'Engineer';
+    const phone = getEngineerPhone(worker);
+    const reason = quitReason || ticket.engineer1QuitReason || 'Worker denied / unable to solve issue on site.';
     const lines = [
       `🔄 *DIGITECH HMS: ROUND-ROBIN TASK RE-ASSIGNMENT*`,
       `----------------------------------------`,
-      `👨‍🔧 *New Managing Worker:* ${newWorker}`,
-      `📱 *Universal Dispatch:* +91 ${ENGINEER_PHONE}`,
+      `👨‍🔧 *New Managing Worker:* ${worker}`,
+      `📱 *Direct Contact:* +91 ${phone}`,
       `🎫 *Ticket No:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
       `⚡ *Priority:* ${ticket.priority || 'P2'}`,
       `🏢 *Client:* ${ticket.clientName || 'N/A'}`,
       `📍 *Site Address:* ${ticket.address || 'N/A'}`,
-      `👤 *Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
+      `👤 *Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
       `⚠️ *Reported Problem:* ${ticket.problem || 'N/A'}`,
       `----------------------------------------`,
-      `❌ *Previous Main Worker (${ticket.engineer1 || 'Engineer 1'}) Quit/Denied Reason:*`,
-      `${quitReason || 'Worker unable to solve problem on site.'}`,
+      `❌ *Previous Main Worker (${ticket.engineer1 || 'Engineer 1'}) Quit Reason:*`,
+      `"${reason}"`,
       `----------------------------------------`,
-      `You have been automatically assigned via Round-Robin to manage the whole work. Please report attendance.`
+      `You have been automatically assigned via Round-Robin to take over and manage the whole work. Please report attendance.`
     ];
-    return `https://wa.me/91${ENGINEER_PHONE}?text=${encodeURIComponent(lines.join('\n'))}`;
+    return `https://wa.me/91${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
   };
 
-  // Save complaint to cloud database & auto-dispatch WhatsApp notification
-  const saveComplaint = async (id: number | string, notifyWhatsApp = true) => {
+  // Helper: WhatsApp escalation to Admin Vineet Mishra
+  const buildAdminEscalationWhatsAppUrl = (ticket: ComplaintItem) => {
+    const lines = [
+      `🚨 *DIGITECH HMS: CRITICAL P1 ADMIN ESCALATION*`,
+      `----------------------------------------`,
+      `👤 *Admin Attention:* Vineet Mishra (+91 9999760222)`,
+      `🎫 *Ticket No:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
+      `⚡ *Priority:* P1 CRITICAL`,
+      `🏢 *Client:* ${ticket.clientName || 'N/A'}`,
+      `📍 *Site Address:* ${ticket.address || 'N/A'}`,
+      `👤 *Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
+      `⚠️ *Problem:* ${ticket.problem || 'N/A'}`,
+      `----------------------------------------`,
+      `❌ *Lead Engineer (${ticket.engineer1 || 'Lead'}) Quit:* ${ticket.engineer1QuitReason || 'Denied task'}`,
+      `❌ *Replacement Worker (${ticket.roundRobinEngineer || 'Round-Robin'}) Also Quit:* ${ticket.roundRobinQuitReason || 'Blocked on site'}`,
+      `----------------------------------------`,
+      `Both assigned technicians have quitted. Ticket escalated to Executive Admin for direct intervention.`
+    ];
+    return `https://wa.me/919999760222?text=${encodeURIComponent(lines.join('\n'))}`;
+  };
+
+  // Pure Save: strictly updates database and does NOT automatically forward or open WhatsApp
+  const saveComplaint = async (id: number | string) => {
     const complaintToSave = complaints.find(c => c.id === id);
     if (!complaintToSave) return;
     
@@ -257,17 +312,7 @@ export default function AdminPage() {
       });
       if (res.ok) {
         setSaveStatus({ id, saving: false, message: 'Saved successfully!' });
-        
-        // Auto-message to WhatsApp whenever Save Changes is clicked and workers are assigned!
-        if (notifyWhatsApp && (complaintToSave.engineer1 || complaintToSave.roundRobinEngineer)) {
-          const waUrl = buildAssignmentWhatsAppUrl(complaintToSave);
-          if (typeof window !== 'undefined') {
-            window.open(waUrl, '_blank');
-          }
-          showToast(`Saved! WhatsApp task assignment dispatched to +91 ${ENGINEER_PHONE}`);
-        } else {
-          showToast('Complaint updated & saved to database!');
-        }
+        showToast('Complaint changes saved to database!');
 
         setTimeout(() => {
           setSaveStatus(prev => prev.id === id ? { ...prev, message: null } : prev);
@@ -315,7 +360,7 @@ export default function AdminPage() {
     const ticket = quitModalEng1.ticket;
     if (!ticket) return;
 
-    const currentEng1 = ticket.engineer1 || 'Abdul';
+    const currentEng1 = ticket.engineer1 || 'Abdul Latif';
     const nextWorker = getNextRoundRobinEngineer(ticket);
     const reason = quitModalEng1.reason.trim() || 'Worker denies / unable to resolve issue on site.';
 
@@ -340,13 +385,7 @@ export default function AdminPage() {
         body: JSON.stringify(updatedTicket)
       });
 
-      // Auto-open WhatsApp dispatch to 8920458516 for the replacement worker!
-      const waUrl = buildRoundRobinWhatsAppUrl(ticket, nextWorker, reason);
-      if (typeof window !== 'undefined') {
-        window.open(waUrl, '_blank');
-      }
-
-      showToast(`Quit recorded. Auto-assigned to ${nextWorker} via Round-Robin & WhatsApp opened!`);
+      showToast(`Quit recorded. Reassigned to ${nextWorker} via Round-Robin.`);
     } catch (e) {
       console.error(e);
       showToast('Error saving handover to server.');
@@ -612,6 +651,21 @@ export default function AdminPage() {
           <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300">
             <span className="font-medium truncate">Digitech Operations</span>
             <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+          </div>
+
+          {/* Admin Role Badge - Strictly Admin Console */}
+          <div className="px-3 py-2 rounded-xl bg-red-950/40 border border-red-500/30 text-xs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div>
+                <div className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                  <span>Vineet Mishra</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-600 text-white font-mono font-bold">ADMIN</span>
+                </div>
+                <div className="text-[9px] text-gray-400">Strictly Admin Access Only</div>
+              </div>
+            </div>
+            <span className="text-xs">🔒</span>
           </div>
 
           {/* "+ Compose" Button (Matching Image 1 in Crimson) */}
@@ -1120,10 +1174,14 @@ export default function AdminPage() {
                   Field Engineers Roster
                 </h3>
                 <div className="flex flex-wrap gap-1.5 text-[11px]">
-                  {['Sharukh', 'Abdul', 'Govind', 'Himanshu', 'Ashish', 'Zubair'].map(eng => (
-                    <span key={eng} className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 font-medium border border-gray-200 flex items-center gap-1.5">
+                  {ROSTER_ENGINEERS.map(eng => (
+                    <span 
+                      key={eng} 
+                      title={`${eng} • +91 ${getEngineerPhone(eng)}`}
+                      className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 font-medium border border-gray-200 flex items-center gap-1.5 cursor-default hover:bg-white transition-colors"
+                    >
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      {eng}
+                      <span>{eng}</span>
                     </span>
                   ))}
                 </div>
@@ -1250,6 +1308,21 @@ export default function AdminPage() {
                             <option key={eng} value={eng}>{eng}</option>
                           ))}
                         </select>
+                        {item.engineer1 && (
+                          <div className="flex items-center justify-between text-[10px] mt-1 text-gray-500">
+                            <span className="font-mono text-emerald-700">+{getEngineerPhone(item.engineer1)}</span>
+                            <a
+                              href={buildEngineer1WhatsAppUrl(item)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-0.5"
+                              title={`Notify ${item.engineer1} on WhatsApp (+91 ${getEngineerPhone(item.engineer1)})`}
+                            >
+                              <span>WA</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          </div>
+                        )}
                         {item.engineer1Status === 'quitted' && (
                           <div className="text-[10px] text-red-600 font-bold mt-0.5 truncate" title={item.engineer1QuitReason}>
                             Quitted: {item.engineer1QuitReason || 'Unable to solve'}
@@ -1269,9 +1342,24 @@ export default function AdminPage() {
                             <option key={eng} value={eng}>{eng}</option>
                           ))}
                         </select>
+                        {item.engineer2 && (
+                          <div className="flex items-center justify-between text-[10px] mt-1 text-gray-500">
+                            <span className="font-mono text-blue-700">+{getEngineerPhone(item.engineer2)}</span>
+                            <a
+                              href={buildEngineer2WhatsAppUrl(item)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-700 font-bold flex items-center gap-0.5"
+                              title={`Notify ${item.engineer2} on WhatsApp (+91 ${getEngineerPhone(item.engineer2)})`}
+                            >
+                              <span>WA</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          </div>
+                        )}
                         {item.roundRobinEngineer && (
                           <div className="text-[10px] text-emerald-700 font-bold mt-0.5">
-                            🔄 Replaced by: {item.roundRobinEngineer}
+                            🔄 Replaced by: {item.roundRobinEngineer} (+91 {getEngineerPhone(item.roundRobinEngineer)})
                           </div>
                         )}
                         {item.adminEscalated && (
@@ -1826,8 +1914,10 @@ export default function AdminPage() {
                           </div>
 
                           <div className="p-2 rounded-lg bg-white border border-gray-200 flex items-center justify-between text-[11px]">
-                            <span className="text-gray-500">Universal Contact Line:</span>
-                            <span className="font-mono font-bold text-gray-800">+91 {ENGINEER_PHONE}</span>
+                            <span className="text-gray-500">Direct WhatsApp Line:</span>
+                            <span className="font-mono font-bold text-emerald-700">
+                              +91 {getEngineerPhone(selectedTicket.engineer1)}
+                            </span>
                           </div>
 
                           {/* Quitted Notice if Engineer 1 has quitted */}
@@ -1846,6 +1936,22 @@ export default function AdminPage() {
                                 </div>
                               )}
                             </div>
+                          )}
+
+                          {/* Dedicated WhatsApp Escalate / Dispatch Button for Engineer 1 */}
+                          {selectedTicket.engineer1 && selectedTicket.engineer1Status !== 'quitted' && (
+                            <a
+                              href={buildEngineer1WhatsAppUrl(selectedTicket)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                              title={`Notify ${selectedTicket.engineer1} on WhatsApp (+91 ${getEngineerPhone(selectedTicket.engineer1)})`}
+                            >
+                              <svg className="w-3.5 h-3.5 fill-current flex-shrink-0" viewBox="0 0 24 24">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                              </svg>
+                              <span>Notify Main Worker on WhatsApp</span>
+                            </a>
                           )}
 
                           {/* Action Button: Quit / Round-Robin Reassignment */}
@@ -1925,13 +2031,31 @@ export default function AdminPage() {
                           </div>
 
                           <div className="p-2 rounded-lg bg-white border border-gray-200 flex items-center justify-between text-[11px]">
-                            <span className="text-gray-500">Universal Contact Line:</span>
-                            <span className="font-mono font-bold text-gray-800">+91 {ENGINEER_PHONE}</span>
+                            <span className="text-gray-500">Direct WhatsApp Line:</span>
+                            <span className="font-mono font-bold text-blue-700">
+                              +91 {getEngineerPhone(selectedTicket.engineer2)}
+                            </span>
                           </div>
 
                           <div className="p-2.5 rounded-lg bg-blue-50/60 border border-blue-100 text-blue-800 text-[11px]">
-                            🤝 Engineer 2 assists Engineer 1 on the site as the project crew. Message automatically notifies both upon saving.
+                            🤝 Engineer 2 assists Engineer 1 on site. Use the dispatch button below to notify him on WhatsApp.
                           </div>
+
+                          {/* Dedicated WhatsApp Escalate / Dispatch Button for Engineer 2 */}
+                          {selectedTicket.engineer2 && (
+                            <a
+                              href={buildEngineer2WhatsAppUrl(selectedTicket)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                              title={`Notify Helper ${selectedTicket.engineer2} on WhatsApp (+91 ${getEngineerPhone(selectedTicket.engineer2)})`}
+                            >
+                              <svg className="w-3.5 h-3.5 fill-current flex-shrink-0" viewBox="0 0 24 24">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                              </svg>
+                              <span>Notify Helper on WhatsApp</span>
+                            </a>
+                          )}
                         </div>
                       </div>
 
@@ -1973,13 +2097,31 @@ export default function AdminPage() {
                               <strong className="text-gray-900 font-bold text-sm">{selectedTicket.roundRobinEngineer}</strong>
                             </div>
                             <div className="text-right">
-                              <span className="text-gray-500 text-[11px] block">Universal Line:</span>
-                              <span className="font-mono font-bold text-gray-800">+91 {ENGINEER_PHONE}</span>
+                              <span className="text-gray-500 text-[11px] block">Direct Line:</span>
+                              <span className="font-mono font-bold text-emerald-700">
+                                +91 {getEngineerPhone(selectedTicket.roundRobinEngineer)}
+                              </span>
                             </div>
                           </div>
 
+                          {/* Dedicated WhatsApp Dispatch for Replacement Worker */}
+                          {selectedTicket.roundRobinStatus !== 'quitted' && (
+                            <a
+                              href={buildRoundRobinWhatsAppUrl(selectedTicket)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full py-2 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                              title={`Notify replacement lead ${selectedTicket.roundRobinEngineer} via WhatsApp (+91 ${getEngineerPhone(selectedTicket.roundRobinEngineer)})`}
+                            >
+                              <svg className="w-3.5 h-3.5 fill-current flex-shrink-0" viewBox="0 0 24 24">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                              </svg>
+                              <span>Notify Replacement Worker (+91 {getEngineerPhone(selectedTicket.roundRobinEngineer)})</span>
+                            </a>
+                          )}
+
                           {selectedTicket.roundRobinStatus === 'quitted' ? (
-                            <div className="p-2.5 rounded-lg bg-red-100 border border-red-300 text-red-900 text-[11px] space-y-1">
+                            <div className="p-2.5 rounded-lg bg-red-100 border border-red-300 text-red-900 text-[11px] space-y-2">
                               <div className="font-bold flex items-center gap-1">
                                 <AlertOctagon className="w-3.5 h-3.5 text-red-600" />
                                 <span>Replacement Worker Also Quitted:</span>
@@ -1990,6 +2132,16 @@ export default function AdminPage() {
                               <div className="text-[10px] font-bold text-red-700 uppercase">
                                 ⚠️ Task fully escalated to Admin (P1 Critical Priority).
                               </div>
+                              <a
+                                href={buildAdminEscalationWhatsAppUrl(selectedTicket)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full py-2 px-3 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                                title="Escalate directly to Admin Vineet Mishra on WhatsApp (+91 9999760222)"
+                              >
+                                <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" />
+                                <span>🚨 Escalate to Admin Vineet Mishra (+91 9999760222)</span>
+                              </a>
                             </div>
                           ) : (
                             <div className="flex items-center justify-between pt-1">
@@ -2415,7 +2567,7 @@ export default function AdminPage() {
                   className="w-full border border-gray-300 rounded-xl p-3 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
                 <p className="text-[10px] text-gray-400 mt-1">
-                  This note will be logged in ticket remarks and forwarded to the next engineer via WhatsApp (+91 {ENGINEER_PHONE}).
+                  This note will be logged in ticket remarks and available for WhatsApp dispatch to the replacement engineer (+91 {getEngineerPhone(getNextRoundRobinEngineer(quitModalEng1.ticket))}).
                 </p>
               </div>
 
@@ -2423,7 +2575,7 @@ export default function AdminPage() {
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 text-[11px] flex items-start gap-2">
                 <RotateCw className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                 <span>
-                  The system will automatically assign <strong>{getNextRoundRobinEngineer(quitModalEng1.ticket)}</strong> to take over and manage the whole work via Round-Robin, and dispatch a WhatsApp notification to +91 {ENGINEER_PHONE}.
+                  The system will automatically assign <strong>{getNextRoundRobinEngineer(quitModalEng1.ticket)}</strong> (+91 {getEngineerPhone(getNextRoundRobinEngineer(quitModalEng1.ticket))}) to take over and manage the whole work via Round-Robin.
                 </span>
               </div>
 

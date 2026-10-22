@@ -20,9 +20,15 @@ import {
   ShieldAlert,
   ArrowRightLeft
 } from 'lucide-react';
+import { 
+  ROSTER_ENGINEERS, 
+  getEngineerPhone, 
+  DEFAULT_ENGINEER_PHONE,
+  ADMIN_PHONE 
+} from '@/lib/engineers';
 
-export const ROSTER_ENGINEERS = ['Abdul', 'Sharukh', 'Govind', 'Himanshu', 'Ashish', 'Zubair'] as const;
-export const ENGINEER_PHONE = '8920458516';
+export { ROSTER_ENGINEERS };
+export const ENGINEER_PHONE = DEFAULT_ENGINEER_PHONE;
 
 export type ToolCategory = 
   | 'CCTV Tools' 
@@ -55,8 +61,8 @@ const INITIAL_TOOLS: ToolItem[] = [
     toolName: 'Bosch Professional Rotary Hammer Drill (GBH 220)',
     assetTag: 'DT-TL-101',
     category: 'Power Tools',
-    assignedEngineer: 'Abdul',
-    engineerContact: ENGINEER_PHONE,
+    assignedEngineer: 'Abdul Latif',
+    engineerContact: '8826447778',
     issuedDate: '2026-10-18',
     expectedReturnDate: '2026-10-22',
     status: 'Issued',
@@ -69,8 +75,8 @@ const INITIAL_TOOLS: ToolItem[] = [
     toolName: 'Core Alignment Fiber Optical Fusion Splicer (FS-60S)',
     assetTag: 'DT-TL-102',
     category: 'Fiber Tools',
-    assignedEngineer: 'Sharukh',
-    engineerContact: ENGINEER_PHONE,
+    assignedEngineer: 'Shahrukh Khan',
+    engineerContact: '7042871709',
     issuedDate: '2026-10-19',
     expectedReturnDate: '2026-10-23',
     status: 'Issued',
@@ -83,8 +89,8 @@ const INITIAL_TOOLS: ToolItem[] = [
     toolName: '4K CCTV IPC Field Camera Monitor & Tester (IPC-9800)',
     assetTag: 'DT-TL-103',
     category: 'CCTV Tools',
-    assignedEngineer: 'Govind',
-    engineerContact: ENGINEER_PHONE,
+    assignedEngineer: 'Govind Kumar',
+    engineerContact: '8130148238',
     issuedDate: '2026-10-16',
     expectedReturnDate: '2026-10-18',
     returnDate: '2026-10-18',
@@ -98,8 +104,8 @@ const INITIAL_TOOLS: ToolItem[] = [
     toolName: 'RJ45 / RJ11 Heavy-Duty Ratchet Crimping Tool',
     assetTag: 'DT-TL-104',
     category: 'Network Testers',
-    assignedEngineer: 'Himanshu',
-    engineerContact: ENGINEER_PHONE,
+    assignedEngineer: 'Sameer Saifi',
+    engineerContact: '9311117493',
     issuedDate: '2026-10-20',
     expectedReturnDate: '2026-10-22',
     status: 'Issued',
@@ -112,8 +118,8 @@ const INITIAL_TOOLS: ToolItem[] = [
     toolName: '12-Foot Heavy Aluminum Telescopic Extension Ladder',
     assetTag: 'DT-TL-105',
     category: 'Safety & Access',
-    assignedEngineer: 'Ashish',
-    engineerContact: ENGINEER_PHONE,
+    assignedEngineer: 'Ankush Singh',
+    engineerContact: '8802659421',
     issuedDate: '2026-10-12',
     expectedReturnDate: '2026-10-15',
     status: 'Overdue',
@@ -126,8 +132,8 @@ const INITIAL_TOOLS: ToolItem[] = [
     toolName: 'Fluke 117 Electricians Digital Multimeter',
     assetTag: 'DT-TL-106',
     category: 'Measuring & Splicing',
-    assignedEngineer: 'Zubair',
-    engineerContact: ENGINEER_PHONE,
+    assignedEngineer: 'Afzal Digitech',
+    engineerContact: '6398776924',
     issuedDate: '2026-10-14',
     expectedReturnDate: '2026-10-17',
     returnDate: '2026-10-17',
@@ -141,8 +147,8 @@ const INITIAL_TOOLS: ToolItem[] = [
     toolName: 'Visual Fault Locator (VFL 30mW) & Optical Power Meter',
     assetTag: 'DT-TL-107',
     category: 'Fiber Tools',
-    assignedEngineer: 'Abdul',
-    engineerContact: ENGINEER_PHONE,
+    assignedEngineer: 'Gurvinder Singh',
+    engineerContact: '8802650942',
     issuedDate: '2026-10-21',
     expectedReturnDate: '2026-10-24',
     status: 'Issued',
@@ -155,8 +161,8 @@ const INITIAL_TOOLS: ToolItem[] = [
     toolName: 'Hikvision Coaxial BNC Compression Tool Kit',
     assetTag: 'DT-TL-108',
     category: 'CCTV Tools',
-    assignedEngineer: 'Sharukh',
-    engineerContact: ENGINEER_PHONE,
+    assignedEngineer: 'Sonu Kumar',
+    engineerContact: '9958028414',
     issuedDate: '2026-10-15',
     expectedReturnDate: '2026-10-18',
     returnDate: '2026-10-18',
@@ -234,7 +240,7 @@ export default function ToolsInventoryView({
     toolName: '',
     assetTag: '',
     category: 'CCTV Tools' as ToolCategory,
-    assignedEngineer: 'Abdul',
+    assignedEngineer: 'Abdul Latif',
     expectedReturnDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
     linkedTicket: '',
     notes: ''
@@ -249,13 +255,14 @@ export default function ToolsInventoryView({
     }
 
     const tag = newToolForm.assetTag.trim() || `DT-TL-${Math.floor(100 + Math.random() * 900)}`;
+    const phone = getEngineerPhone(newToolForm.assignedEngineer);
     const newTool: ToolItem = {
       id: `tool-${Date.now()}`,
       toolName: newToolForm.toolName.trim(),
       assetTag: tag,
       category: newToolForm.category,
       assignedEngineer: newToolForm.assignedEngineer,
-      engineerContact: ENGINEER_PHONE,
+      engineerContact: phone,
       issuedDate: new Date().toISOString().split('T')[0],
       expectedReturnDate: newToolForm.expectedReturnDate,
       status: 'Issued',
@@ -274,7 +281,7 @@ export default function ToolsInventoryView({
       toolName: '',
       assetTag: '',
       category: 'CCTV Tools',
-      assignedEngineer: 'Abdul',
+      assignedEngineer: 'Abdul Latif',
       expectedReturnDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
       linkedTicket: '',
       notes: ''
@@ -356,13 +363,14 @@ export default function ToolsInventoryView({
     });
   }, [tools, statusFilter, engineerFilter, categoryFilter, searchQuery]);
 
-  // WhatsApp reminder message builder to 8920458516
+  // WhatsApp reminder message builder routed to engineer's individual mobile number
   const getToolWhatsAppUrl = (tool: ToolItem) => {
+    const phone = getEngineerPhone(tool.assignedEngineer);
     const msg = [
       `🔧 *DIGITECH HMS: TOOL RETURN NOTICE*`,
       `---------------------------------------`,
       `👨‍🔧 *Engineer:* ${tool.assignedEngineer}`,
-      `📱 *Contact:* +91 ${ENGINEER_PHONE}`,
+      `📱 *Contact:* +91 ${phone}`,
       `🛠️ *Tool Name:* ${tool.toolName}`,
       `🏷️ *Asset Tag:* ${tool.assetTag}`,
       `📅 *Issued On:* ${tool.issuedDate}`,
@@ -372,7 +380,7 @@ export default function ToolsInventoryView({
       `Please return this equipment to the Digitech tool locker or report status.`
     ].filter(Boolean).join('\n');
 
-    return `https://wa.me/91${ENGINEER_PHONE}?text=${encodeURIComponent(msg)}`;
+    return `https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`;
   };
 
   return (
@@ -646,7 +654,9 @@ export default function ToolsInventoryView({
                             </div>
                             <div>
                               <div className="font-semibold text-gray-900">{item.assignedEngineer}</div>
-                              <div className="text-[10px] font-mono text-gray-500">+91 {ENGINEER_PHONE}</div>
+                              <div className="text-[10px] font-mono text-gray-500">
+                                +91 {item.engineerContact || getEngineerPhone(item.assignedEngineer)}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -718,13 +728,13 @@ export default function ToolsInventoryView({
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             
-                            {/* WhatsApp Return Reminder to 8920458516 */}
+                            {/* WhatsApp Return Reminder routed to engineer's individual number */}
                             {!isReturned && (
                               <a
                                 href={getToolWhatsAppUrl(item)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                title={`Send return reminder on WhatsApp to ${item.assignedEngineer} (${ENGINEER_PHONE})`}
+                                title={`Send return reminder on WhatsApp to ${item.assignedEngineer} (+91 ${item.engineerContact || getEngineerPhone(item.assignedEngineer)})`}
                                 className="p-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all flex items-center gap-1 font-semibold text-[11px]"
                               >
                                 <Send className="w-3.5 h-3.5 text-emerald-600" />
@@ -895,7 +905,7 @@ export default function ToolsInventoryView({
                     ))}
                   </select>
                   <p className="text-[10px] text-gray-400 mt-1">
-                    Contact line: <strong className="text-gray-700 font-mono">+91 {ENGINEER_PHONE}</strong>
+                    Direct Contact Line: <strong className="text-gray-700 font-mono">+91 {getEngineerPhone(newToolForm.assignedEngineer)}</strong>
                   </p>
                 </div>
 
