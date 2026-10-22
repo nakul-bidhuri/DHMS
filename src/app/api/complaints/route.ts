@@ -80,13 +80,21 @@ let memoryComplaints: any[] = [
   }
 ];
 
+let lastFetchTime = 0;
+const CACHE_DURATION_MS = 3000; // 3-second cache to prevent repeat request lag
+
 // Read all complaints from the Registry and individual objects
 async function getComplaintsFromCloud(): Promise<any[]> {
+  const now = Date.now();
+  if (memoryComplaints.length > 0 && now - lastFetchTime < CACHE_DURATION_MS) {
+    return memoryComplaints;
+  }
+
   try {
     const regRes = await fetch(`${OBJECTS_API}/${REGISTRY_ID}`, {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-cache' },
-      signal: AbortSignal.timeout(3500)
+      signal: AbortSignal.timeout(1500)
     });
 
     if (!regRes.ok) return memoryComplaints;
@@ -103,7 +111,7 @@ async function getComplaintsFromCloud(): Promise<any[]> {
     const objectsRes = await fetch(`${OBJECTS_API}?${query}`, {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-cache' },
-      signal: AbortSignal.timeout(4000)
+      signal: AbortSignal.timeout(2000)
     });
 
     if (objectsRes.ok) {
@@ -117,6 +125,7 @@ async function getComplaintsFromCloud(): Promise<any[]> {
         // Sort descending by ID or creation
         loaded.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
         memoryComplaints = loaded;
+        lastFetchTime = now;
         return loaded;
       }
     }
@@ -124,6 +133,7 @@ async function getComplaintsFromCloud(): Promise<any[]> {
     console.warn('Could not read from cloud objects store, using cached/memory complaints:', err);
   }
 
+  lastFetchTime = now;
   return memoryComplaints;
 }
 

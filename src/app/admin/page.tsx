@@ -130,12 +130,18 @@ export default function AdminPage() {
   const fetchComplaints = async (isManual = false) => {
     if (isManual) setIsRefreshing(true);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
       const res = await fetch(`/api/complaints?_t=${Date.now()}`, { 
         cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
+        headers: { 'Cache-Control': 'no-cache' },
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+
       const data = await res.json();
-      if (Array.isArray(data)) {
+      if (Array.isArray(data) && data.length > 0) {
         const normalized = data.map((item: ComplaintItem) => ({
           ...item,
           priority: item.priority || (item.problem?.toLowerCase().includes('offline') ? 'P1' : 'P2'),
@@ -143,6 +149,9 @@ export default function AdminPage() {
           status: item.status || 'Open',
         }));
         setComplaints(normalized);
+        try {
+          localStorage.setItem('dhms_cached_complaints_v1', JSON.stringify(normalized));
+        } catch (e) {}
         if (normalized.length > 0) {
           setSelectedTicketId(prev => (prev && normalized.some(n => n.id === prev)) ? prev : normalized[0].id);
         }
@@ -156,13 +165,31 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
       if (isManual) {
-        setTimeout(() => setIsRefreshing(false), 500);
+        setTimeout(() => setIsRefreshing(false), 300);
       }
     }
   };
 
   useEffect(() => {
+    // 1. Immediately hydrate from local storage for instant zero-lag rendering
+    try {
+      const cached = localStorage.getItem('dhms_cached_complaints_v1');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setComplaints(parsed);
+          setSelectedTicketId(parsed[0].id);
+          setLoading(false);
+        }
+      }
+    } catch (e) {}
+
+    // 2. Fetch fresh data in the background
     fetchComplaints();
+
+    // 3. Fallback safety timer: guarantees loading is removed after 1.5s no matter what
+    const safetyTimer = setTimeout(() => setLoading(false), 1500);
+    return () => clearTimeout(safetyTimer);
   }, []);
 
   // Update a single field in local state
