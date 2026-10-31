@@ -50,16 +50,100 @@ import {
 export { ROSTER_ENGINEERS, ENGINEERS_ROSTER, getEngineerPhone, ADMIN_PHONE, ADMIN_NAME };
 export const ENGINEER_PHONE = DEFAULT_ENGINEER_PHONE;
 
-function FieldInfoTooltip({ text }: { text: string }) {
+interface TooltipProps {
+  title: string;
+  role: string;
+  requirement?: string;
+  align?: 'left' | 'right';
+  onHover?: () => void;
+  onLeave?: () => void;
+}
+
+function FieldInfoTooltip({
+  title,
+  role,
+  requirement,
+  align = 'left',
+  onHover,
+  onLeave
+}: TooltipProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <span className="relative inline-flex items-center ml-1 group cursor-help select-none">
-      <span className="w-3.5 h-3.5 rounded-full bg-slate-200 hover:bg-rose-100 text-slate-500 hover:text-rose-600 text-[10px] font-bold inline-flex items-center justify-center transition-colors">
-        i
-      </span>
-      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-50 w-56 p-2 rounded-lg bg-gray-900 text-white text-[11px] leading-tight shadow-xl border border-gray-700 font-normal text-left normal-case">
-        <span>{text}</span>
-        <span className="w-2 h-2 bg-gray-900 rotate-45 -mb-1 mt-1 border-r border-b border-gray-700"></span>
-      </span>
+    <span
+      className="relative inline-flex items-center ml-1 select-none"
+      onMouseEnter={() => {
+        setIsOpen(true);
+        if (onHover) onHover();
+      }}
+      onMouseLeave={() => {
+        setIsOpen(false);
+        if (onLeave) onLeave();
+      }}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer border ${
+          isOpen
+            ? 'bg-rose-600 text-white border-rose-700 shadow-sm'
+            : 'bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 border-slate-200'
+        }`}
+        title="Hover or click to read field requirement & role"
+      >
+        <span className="font-mono text-[10px] leading-none">ⓘ</span>
+        <span className="text-[9px] uppercase tracking-wider leading-none">Role</span>
+      </button>
+
+      {isOpen && (
+        <div
+          className={`absolute top-full mt-1.5 z-[9999] w-72 p-3.5 rounded-xl bg-gray-950 text-white shadow-2xl border border-gray-700 transition-all text-xs text-left font-normal ${
+            align === 'right' ? 'right-0' : 'left-0'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Arrow */}
+          <div
+            className={`absolute -top-1.5 w-3 h-3 bg-gray-950 rotate-45 border-l border-t border-gray-700 ${
+              align === 'right' ? 'right-4' : 'left-4'
+            }`}
+          />
+
+          <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-gray-800">
+            <span className="font-bold text-[11px] text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+              {title}
+            </span>
+            <span className="text-[9px] text-gray-400 font-mono">Guide</span>
+          </div>
+
+          <div className="space-y-2">
+            <div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">
+                Role in HMS:
+              </span>
+              <p className="text-[11px] text-gray-200 leading-snug">
+                {role}
+              </p>
+            </div>
+
+            {requirement && (
+              <div className="pt-1.5 border-t border-gray-800/80">
+                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-0.5">
+                  Requirement:
+                </span>
+                <p className="text-[11px] text-emerald-100/90 leading-snug">
+                  {requirement}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </span>
   );
 }
@@ -131,6 +215,10 @@ export default function AdminPage() {
   const [activeNav, setActiveNav] = useState<string>('inbox');
   const [viewMode, setViewMode] = useState<'inbox' | 'table'>('inbox');
   const [selectedTicketId, setSelectedTicketId] = useState<string | number | null>(null);
+
+  // Active hovered field explanation for Step 1 and Step 2
+  const [activeStep1Field, setActiveStep1Field] = useState<{ title: string; role: string; requirement?: string } | null>(null);
+  const [activeStep2Field, setActiveStep2Field] = useState<{ title: string; role: string; requirement?: string } | null>(null);
 
   // Filters State matching Image 2
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -1792,38 +1880,141 @@ export default function AdminPage() {
                       <span className="text-[11px] text-gray-400">Step -01-</span>
                     </div>
 
+                    {/* Step 1 Dedicated Role & Requirement Hover Guide Box */}
+                    <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-rose-500/5 to-slate-50 border border-amber-200 text-xs flex items-start gap-3 transition-all">
+                      <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 font-bold flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
+                        💡
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-xs text-amber-900 tracking-wide uppercase truncate">
+                            {activeStep1Field ? activeStep1Field.title : 'Step 1: Client Call Registration Guide'}
+                          </span>
+                          <span className="text-[10px] text-amber-800 font-bold flex-shrink-0 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                            {activeStep1Field ? 'Active Field Information' : 'Hover over any field to view role'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-700 mt-1 leading-relaxed">
+                          {activeStep1Field
+                            ? activeStep1Field.role
+                            : 'Hover your mouse over any field label, input box, or [ⓘ Role] badge to inspect its exact operational role, requirement, and coordination rules.'}
+                        </p>
+                        {activeStep1Field?.requirement && (
+                          <div className="mt-1.5 text-[11px] font-medium text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                            <strong>Requirement:</strong> {activeStep1Field.requirement}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <label className="text-gray-500 mb-1 flex items-center">
+                      {/* Client Name */}
+                      <div
+                        onMouseEnter={() => setActiveStep1Field({
+                          title: 'Client / Organization Name',
+                          role: 'Official registered client or corporate account logging the CCTV / security service call.',
+                          requirement: 'Must match the company profile in the Digitech customer master record.'
+                        })}
+                        onMouseLeave={() => setActiveStep1Field(null)}
+                      >
+                        <label className="text-gray-500 mb-1 flex items-center justify-between">
                           <span>Client Name</span>
-                          <FieldInfoTooltip text="Official organization or registered client account logging the service call." />
+                          <FieldInfoTooltip
+                            title="Client / Organization Name"
+                            role="Official registered client or corporate account logging the CCTV / security service call."
+                            requirement="Must match the company profile in the Digitech customer master record."
+                            onHover={() => setActiveStep1Field({
+                              title: 'Client / Organization Name',
+                              role: 'Official registered client or corporate account logging the CCTV / security service call.',
+                              requirement: 'Must match the company profile in the Digitech customer master record.'
+                            })}
+                            onLeave={() => setActiveStep1Field(null)}
+                          />
                         </label>
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-900 font-semibold">
                           {selectedTicket.clientName || 'N/A'}
                         </div>
                       </div>
-                      <div>
-                        <label className="text-gray-500 mb-1 flex items-center">
+
+                      {/* Email Address */}
+                      <div
+                        onMouseEnter={() => setActiveStep1Field({
+                          title: 'Client Email Address',
+                          role: 'Primary notification channel for automated work order confirmations, status tracking, and service reports.',
+                          requirement: 'Valid email required. System automatically sends dispatch updates here.'
+                        })}
+                        onMouseLeave={() => setActiveStep1Field(null)}
+                      >
+                        <label className="text-gray-500 mb-1 flex items-center justify-between">
                           <span>Email Address</span>
-                          <FieldInfoTooltip text="Registered email for automated dispatch confirmation & ticket status updates." />
+                          <FieldInfoTooltip
+                            title="Client Email Address"
+                            role="Primary notification channel for automated work order confirmations, status tracking, and service reports."
+                            requirement="Valid email required. System automatically sends dispatch updates here."
+                            onHover={() => setActiveStep1Field({
+                              title: 'Client Email Address',
+                              role: 'Primary notification channel for automated work order confirmations, status tracking, and service reports.',
+                              requirement: 'Valid email required. System automatically sends dispatch updates here.'
+                            })}
+                            onLeave={() => setActiveStep1Field(null)}
+                          />
                         </label>
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 truncate">
                           {selectedTicket.clientEmail || 'N/A'}
                         </div>
                       </div>
-                      <div>
-                        <label className="text-gray-500 mb-1 flex items-center">
+
+                      {/* Contact Person */}
+                      <div
+                        onMouseEnter={() => setActiveStep1Field({
+                          title: 'Site Contact Person',
+                          role: 'Authorized on-premise coordinator or facility manager present during the engineer visit.',
+                          requirement: 'Field technicians will call this person upon arrival for premise access and gate clearance.'
+                        })}
+                        onMouseLeave={() => setActiveStep1Field(null)}
+                      >
+                        <label className="text-gray-500 mb-1 flex items-center justify-between">
                           <span>Contact Person</span>
-                          <FieldInfoTooltip text="Authorized on-site coordinator / facility manager present on premise." />
+                          <FieldInfoTooltip
+                            title="Site Contact Person"
+                            role="Authorized on-premise coordinator or facility manager present during the engineer visit."
+                            requirement="Field technicians will call this person upon arrival for premise access and gate clearance."
+                            onHover={() => setActiveStep1Field({
+                              title: 'Site Contact Person',
+                              role: 'Authorized on-premise coordinator or facility manager present during the engineer visit.',
+                              requirement: 'Field technicians will call this person upon arrival for premise access and gate clearance.'
+                            })}
+                            onLeave={() => setActiveStep1Field(null)}
+                          />
                         </label>
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800">
                           {selectedTicket.contactPerson || 'N/A'}
                         </div>
                       </div>
-                      <div>
-                        <label className="text-gray-500 mb-1 flex items-center">
+
+                      {/* Contact Phone */}
+                      <div
+                        onMouseEnter={() => setActiveStep1Field({
+                          title: 'Contact Phone / Mobile Line',
+                          role: 'Direct mobile number of the site coordinator.',
+                          requirement: '10-digit mobile number for immediate on-site voice and WhatsApp coordination.'
+                        })}
+                        onMouseLeave={() => setActiveStep1Field(null)}
+                      >
+                        <label className="text-gray-500 mb-1 flex items-center justify-between">
                           <span>Contact Phone</span>
-                          <FieldInfoTooltip text="Direct mobile line of site coordinator for engineer coordination upon arrival." />
+                          <FieldInfoTooltip
+                            title="Contact Phone / Mobile Line"
+                            role="Direct mobile number of the site coordinator."
+                            requirement="10-digit mobile number for immediate on-site voice and WhatsApp coordination."
+                            align="right"
+                            onHover={() => setActiveStep1Field({
+                              title: 'Contact Phone / Mobile Line',
+                              role: 'Direct mobile number of the site coordinator.',
+                              requirement: '10-digit mobile number for immediate on-site voice and WhatsApp coordination.'
+                            })}
+                            onLeave={() => setActiveStep1Field(null)}
+                          />
                         </label>
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 font-mono">
                           {selectedTicket.contactNumber || 'N/A'}
@@ -1832,20 +2023,59 @@ export default function AdminPage() {
                     </div>
 
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                      <div className="md:col-span-1">
-                        <label className="text-gray-500 mb-1 flex items-center">
+                      {/* Site Address */}
+                      <div
+                        className="md:col-span-1"
+                        onMouseEnter={() => setActiveStep1Field({
+                          title: 'Premise Site Address',
+                          role: 'Physical location where cameras, DVR/NVR, cabling, and security hardware are installed.',
+                          requirement: 'Include landmark, building/floor number, and city for accurate GPS field navigation.'
+                        })}
+                        onMouseLeave={() => setActiveStep1Field(null)}
+                      >
+                        <label className="text-gray-500 mb-1 flex items-center justify-between">
                           <span>Site Address</span>
-                          <FieldInfoTooltip text="Exact physical facility location where CCTV cameras and equipment are installed." />
+                          <FieldInfoTooltip
+                            title="Premise Site Address"
+                            role="Physical location where cameras, DVR/NVR, cabling, and security hardware are installed."
+                            requirement="Include landmark, building/floor number, and city for accurate GPS field navigation."
+                            onHover={() => setActiveStep1Field({
+                              title: 'Premise Site Address',
+                              role: 'Physical location where cameras, DVR/NVR, cabling, and security hardware are installed.',
+                              requirement: 'Include landmark, building/floor number, and city for accurate GPS field navigation.'
+                            })}
+                            onLeave={() => setActiveStep1Field(null)}
+                          />
                         </label>
                         <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 flex items-start gap-1.5">
                           <MapPin className="w-3.5 h-3.5 text-red-500 mt-0.5 flex-shrink-0" />
                           <span>{selectedTicket.address || 'N/A'}</span>
                         </div>
                       </div>
-                      <div className="md:col-span-2">
-                        <label className="text-gray-500 mb-1 flex items-center">
+
+                      {/* Problem / Complaint */}
+                      <div
+                        className="md:col-span-2"
+                        onMouseEnter={() => setActiveStep1Field({
+                          title: 'Problem & Symptom Description',
+                          role: 'Initial fault complaint reported by customer (e.g. camera offline, video flickering, NVR beep).',
+                          requirement: 'Provide exact symptoms and number of affected cameras to ensure engineers pack correct spare tools.'
+                        })}
+                        onMouseLeave={() => setActiveStep1Field(null)}
+                      >
+                        <label className="text-gray-500 mb-1 flex items-center justify-between">
                           <span>Problem / Complaint</span>
-                          <FieldInfoTooltip text="Primary fault description, camera outage, or service request logged by client." />
+                          <FieldInfoTooltip
+                            title="Problem & Symptom Description"
+                            role="Initial fault complaint reported by customer (e.g. camera offline, video flickering, NVR beep)."
+                            requirement="Provide exact symptoms and number of affected cameras to ensure engineers pack correct spare tools."
+                            onHover={() => setActiveStep1Field({
+                              title: 'Problem & Symptom Description',
+                              role: 'Initial fault complaint reported by customer (e.g. camera offline, video flickering, NVR beep).',
+                              requirement: 'Provide exact symptoms and number of affected cameras to ensure engineers pack correct spare tools.'
+                            })}
+                            onLeave={() => setActiveStep1Field(null)}
+                          />
                         </label>
                         <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 leading-relaxed min-h-[60px]">
                           {selectedTicket.problem || 'No description provided.'}
@@ -1866,6 +2096,33 @@ export default function AdminPage() {
                         </h3>
                       </div>
                       <span className="text-[11px] text-gray-400">Step -02-</span>
+                    </div>
+
+                    {/* Step 2 Dedicated Role & Requirement Hover Guide Box */}
+                    <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-slate-50 border border-emerald-200 text-xs flex items-start gap-3 transition-all">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
+                        🛠️
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-xs text-emerald-900 tracking-wide uppercase truncate">
+                            {activeStep2Field ? activeStep2Field.title : 'Step 2: Technical Resolution & Crew Guide'}
+                          </span>
+                          <span className="text-[10px] text-emerald-800 font-bold flex-shrink-0 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                            {activeStep2Field ? 'Active Resolution Guidance' : 'Hover over any field to view role'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-700 mt-1 leading-relaxed">
+                          {activeStep2Field
+                            ? activeStep2Field.role
+                            : 'Hover your mouse over any resolution field, engineer card, or [ⓘ Role] badge to inspect engineer assignment rules, warranty terms, and repair documentation guidelines.'}
+                        </p>
+                        {activeStep2Field?.requirement && (
+                          <div className="mt-1.5 text-[11px] font-medium text-blue-900 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                            <strong>Requirement:</strong> {activeStep2Field.requirement}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Level-3 Admin Escalation Notice Banner */}
@@ -1895,10 +2152,28 @@ export default function AdminPage() {
 
                     {/* Ticket Status Meta Strip */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                      {/* Priority */}
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Ticket Priority Level',
+                          role: 'Defines the SLA urgency classification for response and on-site attendance.',
+                          requirement: 'P1: Critical Outage (within 2h) | P2: High (same day) | P3: Medium (24h) | P4: Routine Maintenance.'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                      >
+                        <label className="text-gray-600 font-medium mb-1 flex items-center justify-between">
                           <span>Priority</span>
-                          <FieldInfoTooltip text="SLA Urgency classification: P1 (Critical Outage), P2 (High), P3 (Medium), P4 (Routine Maintenance)." />
+                          <FieldInfoTooltip
+                            title="Ticket Priority Level"
+                            role="Defines the SLA urgency classification for response and on-site attendance."
+                            requirement="P1: Critical Outage (within 2h) | P2: High (same day) | P3: Medium (24h) | P4: Routine Maintenance."
+                            onHover={() => setActiveStep2Field({
+                              title: 'Ticket Priority Level',
+                              role: 'Defines the SLA urgency classification for response and on-site attendance.',
+                              requirement: 'P1: Critical Outage (within 2h) | P2: High (same day) | P3: Medium (24h) | P4: Routine Maintenance.'
+                            })}
+                            onLeave={() => setActiveStep2Field(null)}
+                          />
                         </label>
                         <select
                           value={selectedTicket.priority || 'P2'}
@@ -1912,10 +2187,28 @@ export default function AdminPage() {
                         </select>
                       </div>
 
-                      <div>
-                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                      {/* Status */}
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Ticket Workflow Lifecycle Status',
+                          role: 'Tracks the operational state of this ticket across the service delivery pipeline.',
+                          requirement: 'Update when awaiting customer feedback, pending parts, or when technician completes site attendance.'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                      >
+                        <label className="text-gray-600 font-medium mb-1 flex items-center justify-between">
                           <span>Status</span>
-                          <FieldInfoTooltip text="Current workflow lifecycle stage of the ticket in the HMS tracking system." />
+                          <FieldInfoTooltip
+                            title="Ticket Workflow Lifecycle Status"
+                            role="Tracks the operational state of this ticket across the service delivery pipeline."
+                            requirement="Update when awaiting customer feedback, pending parts, or when technician completes site attendance."
+                            onHover={() => setActiveStep2Field({
+                              title: 'Ticket Workflow Lifecycle Status',
+                              role: 'Tracks the operational state of this ticket across the service delivery pipeline.',
+                              requirement: 'Update when awaiting customer feedback, pending parts, or when technician completes site attendance.'
+                            })}
+                            onLeave={() => setActiveStep2Field(null)}
+                          />
                         </label>
                         <select
                           value={selectedTicket.status || 'Open'}
@@ -1932,10 +2225,28 @@ export default function AdminPage() {
                         </select>
                       </div>
 
-                      <div>
-                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                      {/* Assigned Date */}
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Assigned Target Date',
+                          role: 'Target calendar date scheduled for field engineer site visit and job execution.',
+                          requirement: 'Date must be within SLA agreement window from initial call log time.'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                      >
+                        <label className="text-gray-600 font-medium mb-1 flex items-center justify-between">
                           <span>Assigned Date</span>
-                          <FieldInfoTooltip text="Scheduled target execution date for field engineer site attendance." />
+                          <FieldInfoTooltip
+                            title="Assigned Target Date"
+                            role="Target calendar date scheduled for field engineer site visit and job execution."
+                            requirement="Date must be within SLA agreement window from initial call log time."
+                            onHover={() => setActiveStep2Field({
+                              title: 'Assigned Target Date',
+                              role: 'Target calendar date scheduled for field engineer site visit and job execution.',
+                              requirement: 'Date must be within SLA agreement window from initial call log time.'
+                            })}
+                            onLeave={() => setActiveStep2Field(null)}
+                          />
                         </label>
                         <input
                           type="date"
@@ -1945,10 +2256,29 @@ export default function AdminPage() {
                         />
                       </div>
 
-                      <div>
-                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                      {/* Final Status */}
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Final Operational & Commercial Status',
+                          role: 'Commercial sign-off and closure status of the work order.',
+                          requirement: 'Complete: Service finished | Quotation sent: Awaiting PO | Invoice raise: Ready for accounts billing.'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                      >
+                        <label className="text-gray-600 font-medium mb-1 flex items-center justify-between">
                           <span>Final Status</span>
-                          <FieldInfoTooltip text="Operational & commercial closure state (Complete, Quotation sent, Invoice raise)." />
+                          <FieldInfoTooltip
+                            title="Final Operational & Commercial Status"
+                            role="Commercial sign-off and closure status of the work order."
+                            requirement="Complete: Service finished | Quotation sent: Awaiting PO | Invoice raise: Ready for accounts billing."
+                            align="right"
+                            onHover={() => setActiveStep2Field({
+                              title: 'Final Operational & Commercial Status',
+                              role: 'Commercial sign-off and closure status of the work order.',
+                              requirement: 'Complete: Service finished | Quotation sent: Awaiting PO | Invoice raise: Ready for accounts billing.'
+                            })}
+                            onLeave={() => setActiveStep2Field(null)}
+                          />
                         </label>
                         <select
                           value={selectedTicket.finalStatus || ''}
@@ -1969,13 +2299,21 @@ export default function AdminPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                       
                       {/* CARD 1: ENGINEER 01 (MAIN WORKER - LEAD) */}
-                      <div className={`p-4 rounded-xl border transition-all ${
-                        selectedTicket.engineer1Status === 'quitted'
-                          ? 'border-red-200 bg-red-50/50'
-                          : selectedTicket.engineer1
-                          ? 'border-emerald-200 bg-emerald-50/20'
-                          : 'border-gray-200 bg-gray-50/50'
-                      }`}>
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Engineer 01: Main Lead Worker',
+                          role: 'Lead technician personally accountable for full site inspection, camera diagnosis, and customer sign-off.',
+                          requirement: 'If Engineer 1 quits or denies, Round-Robin automatic re-assignment triggers.'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                        className={`p-4 rounded-xl border transition-all ${
+                          selectedTicket.engineer1Status === 'quitted'
+                            ? 'border-red-200 bg-red-50/50'
+                            : selectedTicket.engineer1
+                            ? 'border-emerald-200 bg-emerald-50/20'
+                            : 'border-gray-200 bg-gray-50/50'
+                        }`}
+                      >
                         <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-200/70">
                           <div className="flex items-center gap-2">
                             <UserCheck className="w-4 h-4 text-emerald-600" />
@@ -2004,9 +2342,19 @@ export default function AdminPage() {
 
                         <div className="space-y-3 text-xs">
                           <div>
-                            <label className="text-gray-500 text-[11px] mb-1 flex items-center">
+                            <label className="text-gray-500 text-[11px] mb-1 flex items-center justify-between">
                               <span>Select Main Engineer</span>
-                              <FieldInfoTooltip text="Primary lead technician responsible for executing the site work order and directing operations." />
+                              <FieldInfoTooltip
+                                title="Engineer 01: Main Lead Worker"
+                                role="Lead technician personally accountable for full site inspection, camera diagnosis, and customer sign-off."
+                                requirement="If Engineer 1 quits or denies, Round-Robin automatic re-assignment triggers."
+                                onHover={() => setActiveStep2Field({
+                                  title: 'Engineer 01: Main Lead Worker',
+                                  role: 'Lead technician personally accountable for full site inspection, camera diagnosis, and customer sign-off.',
+                                  requirement: 'If Engineer 1 quits or denies, Round-Robin automatic re-assignment triggers.'
+                                })}
+                                onLeave={() => setActiveStep2Field(null)}
+                              />
                             </label>
                             <select
                               value={selectedTicket.engineer1 || ''}
@@ -2093,11 +2441,19 @@ export default function AdminPage() {
                       </div>
 
                       {/* CARD 2: ENGINEER 02 (HELPER / ASSISTANT WORKER) */}
-                      <div className={`p-4 rounded-xl border transition-all ${
-                        selectedTicket.engineer2
-                          ? 'border-blue-200 bg-blue-50/20'
-                          : 'border-gray-200 bg-gray-50/50'
-                      }`}>
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Engineer 02: Helper / Assistant Worker',
+                          role: 'Assisting technician for ladder support, physical conduit pulling, drill operations, and tools handling.',
+                          requirement: 'Works under Engineer 1 lead. If both quit, ticket triggers Level-3 Admin Escalation.'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                        className={`p-4 rounded-xl border transition-all ${
+                          selectedTicket.engineer2
+                            ? 'border-blue-200 bg-blue-50/20'
+                            : 'border-gray-200 bg-gray-50/50'
+                        }`}
+                      >
                         <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-200/70">
                           <div className="flex items-center gap-2">
                             <RotateCw className="w-4 h-4 text-blue-600" />
@@ -2122,9 +2478,20 @@ export default function AdminPage() {
 
                         <div className="space-y-3 text-xs">
                           <div>
-                            <label className="text-gray-500 text-[11px] mb-1 flex items-center">
+                            <label className="text-gray-500 text-[11px] mb-1 flex items-center justify-between">
                               <span>Select Helper Engineer</span>
-                              <FieldInfoTooltip text="Secondary technician assigned to assist the main lead with cabling, physical mountings, and tools." />
+                              <FieldInfoTooltip
+                                title="Engineer 02: Helper / Assistant Worker"
+                                role="Assisting technician for ladder support, physical conduit pulling, drill operations, and tools handling."
+                                requirement="Works under Engineer 1 lead. If both quit, ticket triggers Level-3 Admin Escalation."
+                                align="right"
+                                onHover={() => setActiveStep2Field({
+                                  title: 'Engineer 02: Helper / Assistant Worker',
+                                  role: 'Assisting technician for ladder support, physical conduit pulling, drill operations, and tools handling.',
+                                  requirement: 'Works under Engineer 1 lead. If both quit, ticket triggers Level-3 Admin Escalation.'
+                                })}
+                                onLeave={() => setActiveStep2Field(null)}
+                              />
                             </label>
                             <select
                               value={selectedTicket.engineer2 || ''}
@@ -2272,10 +2639,28 @@ export default function AdminPage() {
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
-                      <div>
-                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                      {/* Remarks / Warranty */}
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Remarks / Warranty Classification',
+                          role: 'Commercial entitlement status for billing parts and labor.',
+                          requirement: 'U/W: Under Warranty (Free) | U/AMC: Covered under AMC contract | Chargeable: Client will be billed.'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                      >
+                        <label className="text-gray-600 font-medium mb-1 flex items-center justify-between">
                           <span>Remarks / Warranty</span>
-                          <FieldInfoTooltip text="Commercial entitlement classification: U/W (Under Warranty), U/AMC (Annual Maintenance Contract), Chargeable." />
+                          <FieldInfoTooltip
+                            title="Remarks / Warranty Classification"
+                            role="Commercial entitlement status for billing parts and labor."
+                            requirement="U/W: Under Warranty (Free) | U/AMC: Covered under AMC contract | Chargeable: Client will be billed."
+                            onHover={() => setActiveStep2Field({
+                              title: 'Remarks / Warranty Classification',
+                              role: 'Commercial entitlement status for billing parts and labor.',
+                              requirement: 'U/W: Under Warranty (Free) | U/AMC: Covered under AMC contract | Chargeable: Client will be billed.'
+                            })}
+                            onLeave={() => setActiveStep2Field(null)}
+                          />
                         </label>
                         <select
                           value={selectedTicket.remarks || ''}
@@ -2289,10 +2674,29 @@ export default function AdminPage() {
                         </select>
                       </div>
 
-                      <div>
-                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                      {/* Rectification Type */}
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Rectification Technical Category',
+                          role: 'Categorization of work performed for SLA reporting and equipment history.',
+                          requirement: 'e.g. Hardware replacement, Cable rewire, Power supply change, IP configuration.'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                      >
+                        <label className="text-gray-600 font-medium mb-1 flex items-center justify-between">
                           <span>Rectification Type</span>
-                          <FieldInfoTooltip text="Technical categorization of the repair (e.g. Hardware replacement, Cable rewire, Configuration)." />
+                          <FieldInfoTooltip
+                            title="Rectification Technical Category"
+                            role="Categorization of work performed for SLA reporting and equipment history."
+                            requirement="e.g. Hardware replacement, Cable rewire, Power supply change, IP configuration."
+                            align="right"
+                            onHover={() => setActiveStep2Field({
+                              title: 'Rectification Technical Category',
+                              role: 'Categorization of work performed for SLA reporting and equipment history.',
+                              requirement: 'e.g. Hardware replacement, Cable rewire, Power supply change, IP configuration.'
+                            })}
+                            onLeave={() => setActiveStep2Field(null)}
+                          />
                         </label>
                         <input
                           type="text"
@@ -2305,10 +2709,28 @@ export default function AdminPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                      {/* Finding / Observation */}
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Finding / Diagnostic Observation',
+                          role: 'Actual root-cause detected on-site by the field engineer during physical and electrical inspection.',
+                          requirement: 'Document technical reason (e.g. RJ45 water damage, faulty 12V 2A SMPS, optical sensor failure).'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                      >
+                        <label className="text-gray-600 font-medium mb-1 flex items-center justify-between">
                           <span>Finding / Observation / Reason</span>
-                          <FieldInfoTooltip text="Root-cause diagnostic finding identified by engineer upon physical inspection." />
+                          <FieldInfoTooltip
+                            title="Finding / Diagnostic Observation"
+                            role="Actual root-cause detected on-site by the field engineer during physical and electrical inspection."
+                            requirement="Document technical reason (e.g. RJ45 water damage, faulty 12V 2A SMPS, optical sensor failure)."
+                            onHover={() => setActiveStep2Field({
+                              title: 'Finding / Diagnostic Observation',
+                              role: 'Actual root-cause detected on-site by the field engineer during physical and electrical inspection.',
+                              requirement: 'Document technical reason (e.g. RJ45 water damage, faulty 12V 2A SMPS, optical sensor failure).'
+                            })}
+                            onLeave={() => setActiveStep2Field(null)}
+                          />
                         </label>
                         <input
                           type="text"
@@ -2318,10 +2740,30 @@ export default function AdminPage() {
                           className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
                         />
                       </div>
-                      <div>
-                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+
+                      {/* Solution Provided */}
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Solution Provided / Action Taken',
+                          role: 'Specific engineering measures executed on site to resolve fault and verify live feed.',
+                          requirement: 'Describe actions taken (e.g. Re-crimped BNC/RJ45 connector, replaced 8-port PoE switch, reconfigured NVR).'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                      >
+                        <label className="text-gray-600 font-medium mb-1 flex items-center justify-between">
                           <span>Solution Provided / Action Taken</span>
-                          <FieldInfoTooltip text="Specific engineering steps performed on-site to restore camera system functionality." />
+                          <FieldInfoTooltip
+                            title="Solution Provided / Action Taken"
+                            role="Specific engineering measures executed on site to resolve fault and verify live feed."
+                            requirement="Describe actions taken (e.g. Re-crimped BNC/RJ45 connector, replaced 8-port PoE switch, reconfigured NVR)."
+                            align="right"
+                            onHover={() => setActiveStep2Field({
+                              title: 'Solution Provided / Action Taken',
+                              role: 'Specific engineering measures executed on site to resolve fault and verify live feed.',
+                              requirement: 'Describe actions taken (e.g. Re-crimped BNC/RJ45 connector, replaced 8-port PoE switch, reconfigured NVR).'
+                            })}
+                            onLeave={() => setActiveStep2Field(null)}
+                          />
                         </label>
                         <input
                           type="text"
@@ -2334,10 +2776,28 @@ export default function AdminPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+                      {/* Used Material */}
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Used Material (Bill of Materials)',
+                          role: 'Parts and spares consumed from engineer kit or central inventory for this repair.',
+                          requirement: 'List quantity & item (e.g. 2x BNC connectors, 15m Cat6 cable, 1x DC Jack).'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                      >
+                        <label className="text-gray-600 font-medium mb-1 flex items-center justify-between">
                           <span>Used Material</span>
-                          <FieldInfoTooltip text="Bill of materials & spare parts consumed on site from inventory." />
+                          <FieldInfoTooltip
+                            title="Used Material (Bill of Materials)"
+                            role="Parts and spares consumed from engineer kit or central inventory for this repair."
+                            requirement="List quantity & item (e.g. 2x BNC connectors, 15m Cat6 cable, 1x DC Jack)."
+                            onHover={() => setActiveStep2Field({
+                              title: 'Used Material (Bill of Materials)',
+                              role: 'Parts and spares consumed from engineer kit or central inventory for this repair.',
+                              requirement: 'List quantity & item (e.g. 2x BNC connectors, 15m Cat6 cable, 1x DC Jack).'
+                            })}
+                            onLeave={() => setActiveStep2Field(null)}
+                          />
                         </label>
                         <input
                           type="text"
@@ -2347,10 +2807,30 @@ export default function AdminPage() {
                           className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-rose-500"
                         />
                       </div>
-                      <div>
-                        <label className="text-gray-600 font-medium mb-1 flex items-center">
+
+                      {/* Required Material */}
+                      <div
+                        onMouseEnter={() => setActiveStep2Field({
+                          title: 'Required Material (Follow-up / Quote)',
+                          role: 'Components required for future visit or formal commercial estimate to client.',
+                          requirement: 'Specify brand/model needed (e.g. 1x Hikvision 4MP Turret Camera DS-2CD2347G2-LU).'
+                        })}
+                        onMouseLeave={() => setActiveStep2Field(null)}
+                      >
+                        <label className="text-gray-600 font-medium mb-1 flex items-center justify-between">
                           <span>Required Material</span>
-                          <FieldInfoTooltip text="Spare components required for subsequent follow-up visits or commercial quotation." />
+                          <FieldInfoTooltip
+                            title="Required Material (Follow-up / Quote)"
+                            role="Components required for future visit or formal commercial estimate to client."
+                            requirement="Specify brand/model needed (e.g. 1x Hikvision 4MP Turret Camera DS-2CD2347G2-LU)."
+                            align="right"
+                            onHover={() => setActiveStep2Field({
+                              title: 'Required Material (Follow-up / Quote)',
+                              role: 'Components required for future visit or formal commercial estimate to client.',
+                              requirement: 'Specify brand/model needed (e.g. 1x Hikvision 4MP Turret Camera DS-2CD2347G2-LU).'
+                            })}
+                            onLeave={() => setActiveStep2Field(null)}
+                          />
                         </label>
                         <input
                           type="text"
