@@ -186,10 +186,17 @@ async function getComplaintsFromCloud(): Promise<any[]> {
     if (objectsRes.ok) {
       const items = await objectsRes.json();
       if (Array.isArray(items) && items.length > 0) {
-        const loaded = items.map((item: any) => ({
-          ...item.data,
-          objId: item.id
-        }));
+        const loaded = items.map((item: any) => {
+          const matchSeed = memoryComplaints.find((m: any) => m.id === item.data?.id);
+          return {
+            ...matchSeed,
+            ...item.data,
+            siteEquipments: (Array.isArray(item.data?.siteEquipments) && item.data.siteEquipments.length > 0)
+              ? item.data.siteEquipments
+              : (matchSeed?.siteEquipments || []),
+            objId: item.id
+          };
+        });
 
         // Sort descending by ID or creation
         loaded.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));

@@ -37,7 +37,7 @@ import {
   RotateCcw,
   Trash2
 } from 'lucide-react';
-import ToolsInventoryView from '@/components/ToolsInventoryView';
+import ToolsInventoryView, { ToolItem, INITIAL_TOOLS, STORAGE_KEY } from '@/components/ToolsInventoryView';
 import ToolsInventoryLogo from '@/components/ToolsInventoryLogo';
 import { 
   ROSTER_ENGINEERS, 
@@ -227,6 +227,145 @@ export default function AdminPage() {
     const safetyTimer = setTimeout(() => setLoading(false), 1500);
     return () => clearTimeout(safetyTimer);
   }, []);
+
+  // Two-way synchronized company tools state
+  const [tools, setTools] = useState<ToolItem[]>([]);
+
+  // Hydrate tools from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const today = new Date().toISOString().split('T')[0];
+          const updated = parsed.map((item: ToolItem) => {
+            if (item.status === 'Issued' && item.expectedReturnDate < today) {
+              return { ...item, status: 'Overdue' as const };
+            }
+            return item;
+          });
+          setTools(updated);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse tools cache', e);
+    }
+    setTools(INITIAL_TOOLS);
+  }, []);
+
+  const handleUpdateTools = (newTools: ToolItem[]) => {
+    setTools(newTools);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newTools));
+    } catch (e) {
+      console.error('Failed to save tools', e);
+    }
+  };
+
+  // Continuous background cache sync for complaints
+  useEffect(() => {
+    if (complaints.length > 0) {
+      try {
+        localStorage.setItem('dhms_cached_complaints_v1', JSON.stringify(complaints));
+      } catch (e) {}
+    }
+  }, [complaints]);
+
+  const handleReturnToolFromTicket = (toolId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const updated = tools.map(item => {
+      if (item.id === toolId) {
+        return {
+          ...item,
+          status: 'Returned' as const,
+          returnDate: today,
+          notes: `${item.notes ? item.notes + ' | ' : ''}Returned from site on ${today}`
+        };
+      }
+      return item;
+    });
+    handleUpdateTools(updated);
+    showToast('Company tool marked as returned to locker!');
+  };
+
+  const buildToolReturnWhatsAppUrl = (tool: ToolItem) => {
+    const phone = getEngineerPhone(tool.assignedEngineer);
+    const msg = [
+      `*========================================*`,
+      `*DIGITECH SERVICES | TOOL RETURN NOTICE*`,
+      `*========================================*`,
+      ``,
+      `*Asset Tag:* [${tool.assetTag}]`,
+      `*Equipment:* ${tool.toolName}`,
+      `*Category:* ${tool.category}`,
+      ``,
+      `*-- [CUSTODY DETAILS] --*`,
+      `*Assigned Engineer:* ${tool.assignedEngineer}`,
+      `*Contact Line:* +91 ${phone}`,
+      `*Issued Date:* ${tool.issuedDate}`,
+      `*Return Due Date:* ${tool.expectedReturnDate} ${tool.status === 'Overdue' ? '*[OVERDUE]*' : ''}`,
+      tool.linkedTicket ? `*Linked Ticket:* ${tool.linkedTicket}` : '',
+      ``,
+      `*-- [DIRECTIVE] --*`,
+      `>> Please return this company equipment to the Digitech tool locker.`,
+      `>> If required for extended site maintenance, report extension to office.`,
+      ``,
+      `*========================================*`,
+      `*DIGITECH HMS ASSET MANAGEMENT*`,
+      `*========================================*`
+    ].filter(Boolean).join('\n');
+
+    return `https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`;
+  };
+
+  // Modal: Quick Issue Company Tool directly from Step 2
+  const [isTicketIssueToolModalOpen, setIsTicketIssueToolModalOpen] = useState(false);
+  const [ticketToolForm, setTicketToolForm] = useState({
+    toolName: '',
+    assetTag: '',
+    category: 'CCTV Tools' as any,
+    assignedEngineer: '',
+    expectedReturnDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+    notes: ''
+  });
+
+  const handleIssueToolForTicket = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticketToolForm.toolName.trim()) {
+      alert('Please enter a tool name');
+      return;
+    }
+    const tag = ticketToolForm.assetTag.trim() || `DT-TL-${Math.floor(100 + Math.random() * 900)}`;
+    const engName = ticketToolForm.assignedEngineer || selectedTicket?.engineer1 || 'Abdul Latif';
+    const phone = getEngineerPhone(engName);
+    const newTool: ToolItem = {
+      id: `tool-${Date.now()}`,
+      toolName: ticketToolForm.toolName.trim(),
+      assetTag: tag,
+      category: ticketToolForm.category,
+      assignedEngineer: engName,
+      engineerContact: phone,
+      issuedDate: new Date().toISOString().split('T')[0],
+      expectedReturnDate: ticketToolForm.expectedReturnDate,
+      status: 'Issued',
+      condition: 'Good',
+      linkedTicket: selectedTicket?.ticketNo || `TKT-${selectedTicket?.id}`,
+      notes: ticketToolForm.notes
+    };
+    handleUpdateTools([newTool, ...tools]);
+    setIsTicketIssueToolModalOpen(false);
+    showToast(`Tool ${tag} issued to ${engName} for ${newTool.linkedTicket}!`);
+    setTicketToolForm({
+      toolName: '',
+      assetTag: '',
+      category: 'CCTV Tools',
+      assignedEngineer: '',
+      expectedReturnDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+      notes: ''
+    });
+  };
 
   // Update a single field in local state
   const updateComplaint = (id: number | string, field: string, value: any) => {
@@ -1092,6 +1231,9 @@ export default function AdminPage() {
             setViewMode('inbox');
           }}
           onSaveComplaint={saveComplaint}
+          tools={tools}
+          onUpdateTools={handleUpdateTools}
+          initialTab="backlog"
         />
       ) : activeNav === 'overview' ? (
         <div className="flex-1 flex flex-col bg-[#f4f7f9] overflow-y-auto font-sans">
@@ -2560,32 +2702,44 @@ export default function AdminPage() {
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingEquipmentId(null);
-                            setEquipmentForm({
-                              equipmentName: '',
-                              serialNumber: '',
-                              actionNeeded: 'repair',
-                              faultDescription: '',
-                              dateBroughtBack: new Date().toISOString().split('T')[0],
-                              officeStatus: 'sitting_in_office',
-                              serviceCenterRef: '',
-                              notes: '',
-                              hasTemporaryDevice: true,
-                              tempDeviceName: '',
-                              tempDeviceSerial: '',
-                              tempDeviceDeployedDate: new Date().toISOString().split('T')[0],
-                              tempDeviceRecoveryStatus: 'deployed'
-                            });
-                            setIsEquipmentModalOpen(true);
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                        >
-                          <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                          <span>+ Log Equipment Brought from Site</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingEquipmentId(null);
+                              setEquipmentForm({
+                                equipmentName: '',
+                                serialNumber: '',
+                                actionNeeded: 'repair',
+                                faultDescription: '',
+                                dateBroughtBack: new Date().toISOString().split('T')[0],
+                                officeStatus: 'sitting_in_office',
+                                serviceCenterRef: '',
+                                notes: '',
+                                hasTemporaryDevice: true,
+                                tempDeviceName: '',
+                                tempDeviceSerial: '',
+                                tempDeviceDeployedDate: new Date().toISOString().split('T')[0],
+                                tempDeviceRecoveryStatus: 'deployed'
+                              });
+                              setIsEquipmentModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                            <span>+ Log Equipment Brought from Site</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setActiveNav('tools')}
+                            className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                            title="Open full Equipment Repair & Replacement Backlog in Tools Hub"
+                          >
+                            <span>Backlog Hub</span>
+                            <ExternalLink className="w-3 h-3 text-amber-800" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Equipment List for this ticket */}
@@ -2775,6 +2929,152 @@ export default function AdminPage() {
                           ))}
                         </div>
                       )}
+                    </div>
+
+                    {/* SECTION: COMPANY TOOLS ISSUED FOR THIS SITE */}
+                    <div className="p-4 rounded-xl border border-rose-200 bg-rose-50/30 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-rose-200">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
+                            <Wrench className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-bold text-gray-900">
+                                Company Tools Issued for this Site
+                              </h4>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300 font-bold">
+                                {tools.filter(t => 
+                                  t.linkedTicket === selectedTicket.ticketNo || 
+                                  t.linkedTicket === `TKT-${selectedTicket.id}`
+                                ).length} checked out
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-gray-500">
+                              Locker equipment assigned to lead technician for this project
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTicketToolForm({
+                                toolName: '',
+                                assetTag: '',
+                                category: 'CCTV Tools',
+                                assignedEngineer: selectedTicket.engineer1 || 'Abdul Latif',
+                                expectedReturnDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+                                notes: `Issued for site: ${selectedTicket.clientName}`
+                              });
+                              setIsTicketIssueToolModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                            <span>+ Issue Tool for this Site</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setActiveNav('tools')}
+                            className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                            title="Open Company Tools Locker in full Hub"
+                          >
+                            <span>Locker Hub</span>
+                            <ExternalLink className="w-3 h-3 text-rose-600" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Tools list for this ticket */}
+                      {(() => {
+                        const ticketTools = tools.filter(t => 
+                          t.linkedTicket === selectedTicket.ticketNo || 
+                          t.linkedTicket === `TKT-${selectedTicket.id}`
+                        );
+                        if (ticketTools.length === 0) {
+                          return (
+                            <div className="p-3.5 rounded-lg bg-white border border-dashed border-rose-200 text-center space-y-1">
+                              <p className="text-xs font-semibold text-gray-700">No company tools currently checked out for this ticket</p>
+                              <p className="text-[11px] text-gray-400">
+                                Click &quot;+ Issue Tool for this Site&quot; if the lead technician requires drills, fusion splicers, or CCTV testers from the office locker.
+                              </p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-2">
+                            {ticketTools.map(tool => {
+                              const isOverdue = tool.status === 'Overdue';
+                              const isReturned = tool.status === 'Returned';
+                              return (
+                                <div 
+                                  key={tool.id}
+                                  className="p-3 rounded-lg border border-gray-200 bg-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
+                                >
+                                  <div className="flex items-start gap-2.5 min-w-0">
+                                    <span className="px-2 py-0.5 rounded bg-gray-100 border border-gray-300 font-mono font-bold text-gray-800 text-[11px] flex-shrink-0 mt-0.5">
+                                      {tool.assetTag}
+                                    </span>
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-gray-900 text-xs">
+                                        {tool.toolName}
+                                      </div>
+                                      <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5 flex-wrap">
+                                        <span className="font-medium text-rose-800 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                                          {tool.category}
+                                        </span>
+                                        <span>&bull;</span>
+                                        <span>Custody: <strong>{tool.assignedEngineer}</strong></span>
+                                        <span>&bull;</span>
+                                        <span>Due: <strong className={isOverdue ? 'text-red-600 font-bold' : ''}>{tool.expectedReturnDate}</strong></span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    {isReturned ? (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        ✅ Returned to Locker {tool.returnDate ? `(${tool.returnDate})` : ''}
+                                      </span>
+                                    ) : (
+                                      <>
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                          isOverdue 
+                                            ? 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
+                                            : 'bg-blue-100 text-blue-800 border border-blue-300'
+                                        }`}>
+                                          {isOverdue ? '⚠️ Overdue' : '📦 Checked Out'}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleReturnToolFromTicket(tool.id)}
+                                          className="px-2.5 py-1 rounded text-[10px] font-bold bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-sm transition-all cursor-pointer"
+                                          title="Mark tool returned to office locker"
+                                        >
+                                          ✓ Mark Returned
+                                        </button>
+                                        <a
+                                          href={buildToolReturnWhatsAppUrl(tool)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="p-1 rounded text-emerald-600 hover:bg-emerald-50 border border-emerald-200 transition-colors"
+                                          title="Send tool return reminder on WhatsApp"
+                                        >
+                                          <Send className="w-3.5 h-3.5" />
+                                        </a>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="pt-2 flex justify-end">
@@ -3509,6 +3809,153 @@ export default function AdminPage() {
 
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 4: QUICK ISSUE COMPANY TOOL FOR SITE TICKET       */}
+      {/* ======================================================== */}
+      {isTicketIssueToolModalOpen && selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[90vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-rose-600 to-rose-700 text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <Wrench className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Issue Company Tool for Site</h3>
+                  <p className="text-[11px] text-rose-100">
+                    {selectedTicket.ticketNo} &bull; {selectedTicket.clientName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTicketIssueToolModalOpen(false)}
+                className="p-1 rounded-lg text-rose-100 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleIssueToolForTicket} className="p-5 space-y-4 overflow-y-auto text-xs">
+              
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">
+                  Tool / Equipment Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={ticketToolForm.toolName}
+                  onChange={(e) => setTicketToolForm(prev => ({ ...prev, toolName: e.target.value }))}
+                  placeholder="e.g. Bosch Hammer Drill GBH 220, Fiber Cleaver, Fluke Multimeter"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs text-gray-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-gray-700 font-bold mb-1">
+                    Asset Tag / Serial ID (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={ticketToolForm.assetTag}
+                    onChange={(e) => setTicketToolForm(prev => ({ ...prev, assetTag: e.target.value }))}
+                    placeholder="Auto-generated if blank (DT-TL-XXX)"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-mono text-gray-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-bold mb-1">
+                    Tool Category *
+                  </label>
+                  <select
+                    value={ticketToolForm.category}
+                    onChange={(e) => setTicketToolForm(prev => ({ ...prev, category: e.target.value as any }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs text-gray-900"
+                  >
+                    <option value="CCTV Tools">CCTV Tools</option>
+                    <option value="Fiber Tools">Fiber Tools</option>
+                    <option value="Power Tools">Power Tools</option>
+                    <option value="Network Testers">Network Testers</option>
+                    <option value="Safety & Access">Safety & Access</option>
+                    <option value="Measuring & Splicing">Measuring & Splicing</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-gray-700 font-bold mb-1">
+                    Assign Custody to Engineer *
+                  </label>
+                  <select
+                    value={ticketToolForm.assignedEngineer || selectedTicket.engineer1 || 'Abdul Latif'}
+                    onChange={(e) => setTicketToolForm(prev => ({ ...prev, assignedEngineer: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs text-gray-900 font-medium"
+                  >
+                    {ROSTER_ENGINEERS.map(eng => (
+                      <option key={eng} value={eng}>
+                        {eng} {eng === selectedTicket.engineer1 ? '(Assigned Lead for this ticket)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-bold mb-1">
+                    Expected Return Due Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={ticketToolForm.expectedReturnDate}
+                    onChange={(e) => setTicketToolForm(prev => ({ ...prev, expectedReturnDate: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs font-mono text-gray-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">
+                  Issuance Notes / Special Accessories
+                </label>
+                <textarea
+                  rows={2}
+                  value={ticketToolForm.notes}
+                  onChange={(e) => setTicketToolForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="e.g. Issued with case, chargers, battery pack, test leads"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs text-gray-900"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsTicketIssueToolModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-gray-600 hover:bg-gray-100 font-semibold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Issue Tool Now</span>
+                </button>
+              </div>
+
+            </form>
           </div>
         </div>
       )}

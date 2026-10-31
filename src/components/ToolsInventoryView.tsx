@@ -89,10 +89,13 @@ export interface ToolsInventoryViewProps {
   onUpdateComplaint?: (id: string | number, field: string, value: any) => void;
   onSelectTicket?: (id: string | number) => void;
   onSaveComplaint?: (id: string | number, updatedTicket?: any) => Promise<void>;
+  tools?: ToolItem[];
+  onUpdateTools?: (newTools: ToolItem[]) => void;
+  initialTab?: 'tools' | 'backlog';
 }
 
 // Initial realistic preloaded operational tools for CCTV & Telecom field engineers
-const INITIAL_TOOLS: ToolItem[] = [
+export const INITIAL_TOOLS: ToolItem[] = [
   {
     id: 'tool-1',
     toolName: 'Bosch Professional Rotary Hammer Drill (GBH 220)',
@@ -210,19 +213,24 @@ const INITIAL_TOOLS: ToolItem[] = [
   }
 ];
 
-const STORAGE_KEY = 'digitech_tools_inventory_v1';
+export const STORAGE_KEY = 'digitech_tools_inventory_v1';
 
 export default function ToolsInventoryView({
   complaintTickets = [],
   onUpdateComplaint,
   onSelectTicket,
-  onSaveComplaint
+  onSaveComplaint,
+  tools: externalTools,
+  onUpdateTools,
+  initialTab = 'backlog'
 }: ToolsInventoryViewProps) {
   // Navigation: Dual Tabs ('tools' = Company Tools Locker, 'backlog' = Site Equipment Repair & Replacement Backlog)
-  const [activeTab, setActiveTab] = useState<'tools' | 'backlog'>('tools');
+  const [activeTab, setActiveTab] = useState<'tools' | 'backlog'>(initialTab);
 
   // --- COMPANY TOOLS STATE ---
-  const [tools, setTools] = useState<ToolItem[]>([]);
+  const [internalTools, setInternalTools] = useState<ToolItem[]>([]);
+  const tools = (externalTools && externalTools.length > 0) ? externalTools : internalTools;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [engineerFilter, setEngineerFilter] = useState<string>('All');
@@ -244,6 +252,7 @@ export default function ToolsInventoryView({
 
   // Load tools from localStorage or fallback
   useEffect(() => {
+    if (externalTools && externalTools.length > 0) return;
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -256,18 +265,21 @@ export default function ToolsInventoryView({
             }
             return item;
           });
-          setTools(updated);
+          setInternalTools(updated);
           return;
         }
       }
     } catch (e) {
       console.warn('Failed to parse stored tools, using default', e);
     }
-    setTools(INITIAL_TOOLS);
-  }, []);
+    setInternalTools(INITIAL_TOOLS);
+  }, [externalTools]);
 
   const saveTools = (newTools: ToolItem[]) => {
-    setTools(newTools);
+    if (onUpdateTools) {
+      onUpdateTools(newTools);
+    }
+    setInternalTools(newTools);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newTools));
     } catch (e) {
@@ -709,33 +721,62 @@ export default function ToolsInventoryView({
         </div>
 
         <div className="flex items-center gap-3">
-          {activeTab === 'tools' ? (
-            <button
-              onClick={() => setIsIssueModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#e11d48] to-[#be123c] hover:from-[#be123c] hover:to-[#9f1239] text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-rose-950/20 transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Issue Tool to Engineer</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (complaintTickets.length > 0) {
-                  setBacklogFormTicketId(complaintTickets[0].id);
-                }
-                setIsAddBacklogModalOpen(true);
-              }}
-              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>+ Log Equipment Brought from Site</span>
-            </button>
-          )}
+          <button
+            onClick={() => {
+              if (complaintTickets.length > 0) {
+                setBacklogFormTicketId(complaintTickets[0].id);
+              }
+              setActiveTab('backlog');
+              setIsAddBacklogModalOpen(true);
+            }}
+            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            <span>+ Log Equipment Brought from Site</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('tools');
+              setIsIssueModalOpen(true);
+            }}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#e11d48] to-[#be123c] hover:from-[#be123c] hover:to-[#9f1239] text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-rose-950/20 transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            <span>+ Issue Tool to Engineer</span>
+          </button>
         </div>
       </div>
 
       {/* DUAL TAB SWITCHER */}
       <div className="px-8 bg-white border-b border-gray-200 flex items-center gap-6">
+        <button
+          type="button"
+          onClick={() => setActiveTab('backlog')}
+          className={`py-3.5 px-2 text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            activeTab === 'backlog'
+              ? 'border-amber-600 text-amber-700'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <RotateCcw className="w-4 h-4 text-amber-600" />
+          <span>Site Equipment: Repair & Replacement Backlog</span>
+          {backlogStats.sittingCount > 0 ? (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-100 text-red-700 border border-red-300 animate-pulse">
+              🔴 {backlogStats.sittingCount} in office
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-100 text-gray-700">
+              {allSiteEquipments.length}
+            </span>
+          )}
+          {backlogStats.activeStandbyCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              ⚠️ {backlogStats.activeStandbyCount} standby deployed
+            </span>
+          )}
+        </button>
+
         <button
           type="button"
           onClick={() => setActiveTab('tools')}
@@ -748,35 +789,8 @@ export default function ToolsInventoryView({
           <Wrench className="w-4 h-4" />
           <span>Company Tools Locker</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-100 text-gray-700">
-            {tools.length}
+            {tools.length} total &bull; {stats.issued} issued
           </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('backlog')}
-          className={`py-3.5 px-2 text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-            activeTab === 'backlog'
-              ? 'border-[#be123c] text-[#be123c]'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>Site Equipment: Repair & Replacement Backlog</span>
-          {backlogStats.sittingCount > 0 ? (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-100 text-red-700 border border-red-300 animate-pulse">
-              {backlogStats.sittingCount} in office
-            </span>
-          ) : (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-100 text-gray-700">
-              {allSiteEquipments.length}
-            </span>
-          )}
-          {backlogStats.activeStandbyCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
-              {backlogStats.activeStandbyCount} standby deployed
-            </span>
-          )}
         </button>
       </div>
 
@@ -982,9 +996,23 @@ export default function ToolsInventoryView({
                                     {item.category}
                                   </span>
                                   {item.linkedTicket && (
-                                    <span className="font-mono text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                                      {item.linkedTicket}
-                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const match = complaintTickets.find(c => 
+                                          (c.ticketNo && c.ticketNo.toLowerCase() === item.linkedTicket?.toLowerCase()) ||
+                                          `TKT-${c.id}`.toLowerCase() === item.linkedTicket?.toLowerCase()
+                                        );
+                                        if (match) {
+                                          onSelectTicket?.(match.id);
+                                        }
+                                      }}
+                                      className="font-mono text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200 flex items-center gap-1 cursor-pointer transition-colors"
+                                      title="Open linked ticket in Inbox"
+                                    >
+                                      <span>{item.linkedTicket}</span>
+                                      <ExternalLink className="w-2.5 h-2.5 text-blue-500" />
+                                    </button>
                                   )}
                                 </div>
                                 {item.notes && (
