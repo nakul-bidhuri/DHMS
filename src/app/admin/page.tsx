@@ -34,7 +34,8 @@ import {
   Sparkles,
   Send,
   UserCheck,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 import ToolsInventoryView from '@/components/ToolsInventoryView';
 import ToolsInventoryLogo from '@/components/ToolsInventoryLogo';
@@ -50,9 +51,29 @@ import {
 export { ROSTER_ENGINEERS, ENGINEERS_ROSTER, getEngineerPhone, ADMIN_PHONE, ADMIN_NAME };
 export const ENGINEER_PHONE = DEFAULT_ENGINEER_PHONE;
 
+export interface SiteEquipmentItem {
+  id: string;
+  ticketId?: string | number;
+  ticketNo?: string;
+  clientName?: string;
+  address?: string;
+  equipmentName: string;
+  serialNumber?: string;
+  actionNeeded: 'repair' | 'replace';
+  faultDescription: string;
+  dateBroughtBack: string;
+  officeStatus: 'sitting_in_office' | 'at_service_center' | 'ready_for_reinstall' | 'reinstalled';
+  serviceCenterRef?: string;
+  notes?: string;
+  hasTemporaryDevice: boolean;
+  tempDeviceName?: string;
+  tempDeviceSerial?: string;
+  tempDeviceDeployedDate?: string;
+  tempDeviceRecoveryStatus: 'deployed' | 'recovered';
+  tempDeviceRecoveryDate?: string;
+}
 
-
-interface ComplaintItem {
+export interface ComplaintItem {
   id: number | string;
   date?: string;
   complaintType?: string;
@@ -84,7 +105,8 @@ interface ComplaintItem {
   remarks?: string;
   status?: string;
   finalStatus?: string;
-  [key: string]: string | number | boolean | undefined;
+  siteEquipments?: SiteEquipmentItem[];
+  [key: string]: any;
 }
 
 // Digitech Logo Component using official logo.png from website
@@ -207,7 +229,7 @@ export default function AdminPage() {
   }, []);
 
   // Update a single field in local state
-  const updateComplaint = (id: number | string, field: string, value: string) => {
+  const updateComplaint = (id: number | string, field: string, value: any) => {
     setComplaints(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
   };
 
@@ -362,8 +384,8 @@ export default function AdminPage() {
   };
 
   // Pure Save: strictly updates database and does NOT automatically forward or open WhatsApp
-  const saveComplaint = async (id: number | string) => {
-    const complaintToSave = complaints.find(c => c.id === id);
+  const saveComplaint = async (id: number | string, updatedTicket?: ComplaintItem) => {
+    const complaintToSave = updatedTicket || complaints.find(c => c.id === id);
     if (!complaintToSave) return;
     
     setSaveStatus({ id, saving: true, message: null });
@@ -387,6 +409,206 @@ export default function AdminPage() {
       console.error(err);
       setSaveStatus({ id, saving: false, message: 'Failed to save.' });
       showToast('Error saving changes to database.');
+    }
+  };
+
+  // Helper: WhatsApp directive builder for site equipment (reinstallation, backlog action, standby recovery)
+  const buildEquipmentWhatsAppUrl = (ticket: ComplaintItem, eq: SiteEquipmentItem) => {
+    const engName = ticket.engineer1 || 'Field Lead';
+    const phone = getEngineerPhone(engName);
+    const lines = [
+      `*========================================*`,
+      `*DIGITECH SERVICES | SITE HARDWARE DIRECTIVE*`,
+      `*========================================*`,
+      ``,
+      `*Ticket ID:* ${ticket.ticketNo || `TKT-${ticket.id}`}`,
+      `*Client:* ${ticket.clientName || 'N/A'}`,
+      `*Site Address:* ${ticket.address || 'N/A'}`,
+      `*Client Contact:* ${ticket.contactPerson || 'N/A'} (${ticket.contactNumber || 'N/A'})`,
+      ``,
+      `*-- [EQUIPMENT DETAILS] --*`,
+      `*Device:* ${eq.equipmentName}`,
+      eq.serialNumber ? `*Serial No:* ${eq.serialNumber}` : '',
+      `*Action Needed:* ${eq.actionNeeded === 'repair' ? 'REPAIR' : 'REPLACEMENT'}`,
+      `*Office Status:* ${eq.officeStatus.toUpperCase().replace(/_/g, ' ')}`,
+      eq.serviceCenterRef ? `*Service Ref:* ${eq.serviceCenterRef}` : '',
+      ``,
+      eq.hasTemporaryDevice ? [
+        `*-- [STANDBY LOANER AT SITE] --*`,
+        `*Temporary Device:* ${eq.tempDeviceName || 'Loaner Unit'}`,
+        eq.tempDeviceSerial ? `*Standby S/N:* ${eq.tempDeviceSerial}` : '',
+        `*Recovery Status:* ${eq.tempDeviceRecoveryStatus === 'deployed' ? 'STILL ON SITE (MUST BE RECOVERED)' : 'RECOVERED TO OFFICE'}`
+      ].filter(Boolean).join('\n') : '',
+      ``,
+      `*-- [OPERATIONAL INSTRUCTION] --*`,
+      eq.officeStatus === 'ready_for_reinstall' 
+        ? `>> Collect repaired/replaced unit from Digitech office.\n>> Reinstall at client site and RECOVER temporary standby unit [${eq.tempDeviceName || 'loaner unit'}] back to office!`
+        : eq.officeStatus === 'sitting_in_office'
+        ? `>> Hardware is sitting in office backlog. Please prioritize testing or dispatch to vendor service center.`
+        : `>> Coordinate hardware swap & site attendance with client.`,
+      ``,
+      `*========================================*`,
+      `*DIGITECH HMS ASSET MANAGEMENT*`,
+      `*========================================*`
+    ].filter(Boolean);
+    return `https://wa.me/91${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
+  };
+
+  // Equipment logging state for Step 2
+  const [isEquipmentModalOpen, setIsEquipmentModalOpen] = useState(false);
+  const [editingEquipmentId, setEditingEquipmentId] = useState<string | null>(null);
+  const [equipmentForm, setEquipmentForm] = useState<{
+    equipmentName: string;
+    serialNumber: string;
+    actionNeeded: 'repair' | 'replace';
+    faultDescription: string;
+    dateBroughtBack: string;
+    officeStatus: 'sitting_in_office' | 'at_service_center' | 'ready_for_reinstall' | 'reinstalled';
+    serviceCenterRef: string;
+    notes: string;
+    hasTemporaryDevice: boolean;
+    tempDeviceName: string;
+    tempDeviceSerial: string;
+    tempDeviceDeployedDate: string;
+    tempDeviceRecoveryStatus: 'deployed' | 'recovered';
+  }>({
+    equipmentName: '',
+    serialNumber: '',
+    actionNeeded: 'repair',
+    faultDescription: '',
+    dateBroughtBack: new Date().toISOString().split('T')[0],
+    officeStatus: 'sitting_in_office',
+    serviceCenterRef: '',
+    notes: '',
+    hasTemporaryDevice: true,
+    tempDeviceName: '',
+    tempDeviceSerial: '',
+    tempDeviceDeployedDate: new Date().toISOString().split('T')[0],
+    tempDeviceRecoveryStatus: 'deployed'
+  });
+
+  const handleSaveEquipment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTicket) return;
+    if (!equipmentForm.equipmentName.trim()) {
+      alert('Please specify the equipment name');
+      return;
+    }
+
+    const currentEquipments = selectedTicket.siteEquipments || [];
+    let updatedEquipments: SiteEquipmentItem[];
+
+    if (editingEquipmentId) {
+      updatedEquipments = currentEquipments.map(item => 
+        item.id === editingEquipmentId 
+          ? {
+              ...item,
+              ...equipmentForm,
+              ticketId: selectedTicket.id,
+              ticketNo: selectedTicket.ticketNo || `TKT-${selectedTicket.id}`,
+              clientName: selectedTicket.clientName,
+              address: selectedTicket.address
+            }
+          : item
+      );
+    } else {
+      const newItem: SiteEquipmentItem = {
+        id: `eq-${Date.now()}`,
+        ticketId: selectedTicket.id,
+        ticketNo: selectedTicket.ticketNo || `TKT-${selectedTicket.id}`,
+        clientName: selectedTicket.clientName,
+        address: selectedTicket.address,
+        ...equipmentForm
+      };
+      updatedEquipments = [newItem, ...currentEquipments];
+    }
+
+    const updatedTicket: ComplaintItem = {
+      ...selectedTicket,
+      siteEquipments: updatedEquipments
+    };
+
+    setComplaints(prev => prev.map(c => c.id === selectedTicket.id ? updatedTicket : c));
+    setIsEquipmentModalOpen(false);
+    setEditingEquipmentId(null);
+
+    try {
+      await fetch('/api/complaints', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTicket)
+      });
+      showToast(editingEquipmentId ? 'Equipment details updated!' : 'Equipment logged for repair/replacement!');
+    } catch (err) {
+      console.error(err);
+      showToast('Error saving equipment log to database.');
+    }
+  };
+
+  const handleUpdateSiteEquipmentStatus = async (
+    ticketId: number | string,
+    equipmentId: string,
+    newStatus: 'sitting_in_office' | 'at_service_center' | 'ready_for_reinstall' | 'reinstalled'
+  ) => {
+    const ticket = complaints.find(c => c.id === ticketId);
+    if (!ticket) return;
+    const current = ticket.siteEquipments || [];
+    const updated = current.map(eq => eq.id === equipmentId ? { ...eq, officeStatus: newStatus } : eq);
+    const updatedTicket = { ...ticket, siteEquipments: updated };
+    setComplaints(prev => prev.map(c => c.id === ticketId ? updatedTicket : c));
+    try {
+      await fetch('/api/complaints', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTicket)
+      });
+      showToast(`Status updated to ${newStatus.replace(/_/g, ' ')}`);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleRecoverStandbyUnit = async (ticketId: number | string, equipmentId: string) => {
+    const ticket = complaints.find(c => c.id === ticketId);
+    if (!ticket) return;
+    const current = ticket.siteEquipments || [];
+    const today = new Date().toISOString().split('T')[0];
+    const updated = current.map(eq => eq.id === equipmentId ? {
+      ...eq,
+      tempDeviceRecoveryStatus: 'recovered' as const,
+      tempDeviceRecoveryDate: today
+    } : eq);
+    const updatedTicket = { ...ticket, siteEquipments: updated };
+    setComplaints(prev => prev.map(c => c.id === ticketId ? updatedTicket : c));
+    try {
+      await fetch('/api/complaints', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTicket)
+      });
+      showToast('Temporary standby unit marked as recovered back to office locker!');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteSiteEquipment = async (ticketId: number | string, equipmentId: string) => {
+    if (!confirm('Are you sure you want to delete this equipment log?')) return;
+    const ticket = complaints.find(c => c.id === ticketId);
+    if (!ticket) return;
+    const current = ticket.siteEquipments || [];
+    const updated = current.filter(eq => eq.id !== equipmentId);
+    const updatedTicket = { ...ticket, siteEquipments: updated };
+    setComplaints(prev => prev.map(c => c.id === ticketId ? updatedTicket : c));
+    try {
+      await fetch('/api/complaints', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTicket)
+      });
+      showToast('Equipment record deleted.');
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -861,7 +1083,16 @@ export default function AdminPage() {
       {/* VIEW SWITCHER: TOOLS | OVERVIEW | TABLE | INBOX          */}
       {/* ======================================================== */}
       {activeNav === 'tools' ? (
-        <ToolsInventoryView complaintTickets={complaints} />
+        <ToolsInventoryView 
+          complaintTickets={complaints}
+          onUpdateComplaint={updateComplaint}
+          onSelectTicket={(ticketId: string | number) => {
+            setSelectedTicketId(ticketId);
+            setActiveNav('inbox');
+            setViewMode('inbox');
+          }}
+          onSaveComplaint={saveComplaint}
+        />
       ) : activeNav === 'overview' ? (
         <div className="flex-1 flex flex-col bg-[#f4f7f9] overflow-y-auto font-sans">
           
@@ -2307,6 +2538,245 @@ export default function AdminPage() {
                       </div>
                     </div>
 
+                    {/* SECTION: SITE EQUIPMENT BROUGHT BACK FOR REPAIR / REPLACEMENT & STANDBY TRACKER */}
+                    <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/40 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-200">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
+                            <RotateCcw className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-bold text-gray-900">
+                                Site Equipment & Standby Loaner Log
+                              </h4>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-bold">
+                                {(selectedTicket.siteEquipments || []).length} logged
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-gray-500">
+                              Log faulty material brought to office for repair/replacement + temporary standby devices attached at site
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingEquipmentId(null);
+                            setEquipmentForm({
+                              equipmentName: '',
+                              serialNumber: '',
+                              actionNeeded: 'repair',
+                              faultDescription: '',
+                              dateBroughtBack: new Date().toISOString().split('T')[0],
+                              officeStatus: 'sitting_in_office',
+                              serviceCenterRef: '',
+                              notes: '',
+                              hasTemporaryDevice: true,
+                              tempDeviceName: '',
+                              tempDeviceSerial: '',
+                              tempDeviceDeployedDate: new Date().toISOString().split('T')[0],
+                              tempDeviceRecoveryStatus: 'deployed'
+                            });
+                            setIsEquipmentModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>+ Log Equipment Brought from Site</span>
+                        </button>
+                      </div>
+
+                      {/* Equipment List for this ticket */}
+                      {(!selectedTicket.siteEquipments || selectedTicket.siteEquipments.length === 0) ? (
+                        <div className="p-4 rounded-lg bg-white border border-dashed border-amber-200 text-center space-y-1">
+                          <p className="text-xs font-semibold text-gray-700">No faulty equipment logged from this site yet</p>
+                          <p className="text-[11px] text-gray-400">
+                            If hardware was removed for bench repair or warranty replacement, click &quot;+ Log Equipment Brought from Site&quot; to track office handling and ensure the loaner unit isn&apos;t forgotten.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {selectedTicket.siteEquipments.map((eq) => (
+                            <div 
+                              key={eq.id} 
+                              className={`p-3.5 rounded-xl border bg-white shadow-sm space-y-2.5 transition-all ${
+                                eq.officeStatus === 'sitting_in_office' 
+                                  ? 'border-red-300 ring-1 ring-red-200' 
+                                  : eq.officeStatus === 'ready_for_reinstall'
+                                  ? 'border-emerald-300 ring-1 ring-emerald-200'
+                                  : 'border-gray-200'
+                              }`}
+                            >
+                              {/* Row 1: Badges, Title, Status & Actions */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {eq.actionNeeded === 'repair' ? (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                      <Wrench className="w-3 h-3 text-amber-700" />
+                                      <span>Needs Repair</span>
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300 flex items-center gap-1">
+                                      <RotateCw className="w-3 h-3 text-purple-700" />
+                                      <span>Needs Replacement</span>
+                                    </span>
+                                  )}
+
+                                  <span className="text-xs font-bold text-gray-900">
+                                    {eq.equipmentName}
+                                  </span>
+                                  {eq.serialNumber && (
+                                    <span className="text-[10px] font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                                      S/N: {eq.serialNumber}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <label className="text-[10px] text-gray-500 font-medium">Office Status:</label>
+                                  <select
+                                    value={eq.officeStatus}
+                                    onChange={(e) => handleUpdateSiteEquipmentStatus(selectedTicket.id, eq.id, e.target.value as any)}
+                                    className={`text-[11px] font-bold rounded-lg px-2.5 py-1 border focus:outline-none ${
+                                      eq.officeStatus === 'sitting_in_office'
+                                        ? 'bg-red-50 text-red-800 border-red-300'
+                                        : eq.officeStatus === 'at_service_center'
+                                        ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                        : eq.officeStatus === 'ready_for_reinstall'
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                        : 'bg-gray-100 text-gray-700 border-gray-300'
+                                    }`}
+                                  >
+                                    <option value="sitting_in_office">🔴 Sitting in Office (Backlog / Needs Action)</option>
+                                    <option value="at_service_center">🟡 Sent to Service Center / Vendor RMA</option>
+                                    <option value="ready_for_reinstall">🟢 Repaired / Replacement Arrived (Ready for Site)</option>
+                                    <option value="reinstalled">✅ Reinstalled at Site (Closed)</option>
+                                  </select>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingEquipmentId(eq.id);
+                                      setEquipmentForm({
+                                        equipmentName: eq.equipmentName,
+                                        serialNumber: eq.serialNumber || '',
+                                        actionNeeded: eq.actionNeeded,
+                                        faultDescription: eq.faultDescription,
+                                        dateBroughtBack: eq.dateBroughtBack,
+                                        officeStatus: eq.officeStatus,
+                                        serviceCenterRef: eq.serviceCenterRef || '',
+                                        notes: eq.notes || '',
+                                        hasTemporaryDevice: eq.hasTemporaryDevice,
+                                        tempDeviceName: eq.tempDeviceName || '',
+                                        tempDeviceSerial: eq.tempDeviceSerial || '',
+                                        tempDeviceDeployedDate: eq.tempDeviceDeployedDate || new Date().toISOString().split('T')[0],
+                                        tempDeviceRecoveryStatus: eq.tempDeviceRecoveryStatus || 'deployed'
+                                      });
+                                      setIsEquipmentModalOpen(true);
+                                    }}
+                                    className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                    title="Edit Equipment Details"
+                                  >
+                                    <Wrench className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSiteEquipment(selectedTicket.id, eq.id)}
+                                    className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                    title="Delete Equipment Record"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Row 2: Fault and dates */}
+                              <div className="text-xs text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-gray-100">
+                                <div>
+                                  <span className="text-[10px] text-gray-400 block font-medium">Fault / Issue Observation:</span>
+                                  <p className="text-gray-800 text-[11px] font-medium">{eq.faultDescription || 'No detailed issue logged'}</p>
+                                </div>
+                                <div className="sm:text-right">
+                                  <span className="text-[10px] text-gray-400 block font-medium">Date Brought Back to Office:</span>
+                                  <span className="text-gray-700 text-[11px] font-mono font-semibold">{eq.dateBroughtBack}</span>
+                                  {eq.serviceCenterRef && (
+                                    <div className="text-[10px] text-blue-700 font-mono font-bold">
+                                      Service/RMA Ref: {eq.serviceCenterRef}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Row 3: Temporary Standby Device Block */}
+                              {eq.hasTemporaryDevice && (
+                                <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-1.5 font-bold text-amber-950 text-[11px]">
+                                      <RotateCw className="w-3.5 h-3.5 text-amber-700" />
+                                      <span>Temporary Standby Device Installed at Site:</span>
+                                    </div>
+                                    <div className="text-[11px] text-gray-800">
+                                      <span className="font-semibold">{eq.tempDeviceName || 'Loaner Unit'}</span>
+                                      {eq.tempDeviceSerial && (
+                                        <span className="font-mono text-gray-600 ml-1.5">({eq.tempDeviceSerial})</span>
+                                      )}
+                                      {eq.tempDeviceDeployedDate && (
+                                        <span className="text-[10px] text-gray-500 ml-2">Deployed on {eq.tempDeviceDeployedDate}</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    {eq.tempDeviceRecoveryStatus === 'deployed' ? (
+                                      <>
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                                          ⚠️ Standby on Site (Needs Recovery)
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRecoverStandbyUnit(selectedTicket.id, eq.id)}
+                                          className="px-2.5 py-1 rounded text-[10px] font-bold bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-sm transition-all"
+                                          title="Click when repaired unit is reinstalled and standby loaner device is brought back to office"
+                                        >
+                                          ✓ Mark Standby Recovered
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        ✅ Standby Recovered to Locker {eq.tempDeviceRecoveryDate ? `(${eq.tempDeviceRecoveryDate})` : ''}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* WhatsApp Directive Link for this specific equipment */}
+                              {selectedTicket.engineer1 && (
+                                <div className="pt-1 flex items-center justify-between text-[11px]">
+                                  <span className="text-gray-400">
+                                    Lead: <strong className="text-gray-700">{selectedTicket.engineer1}</strong>
+                                  </span>
+                                  <a
+                                    href={buildEquipmentWhatsAppUrl(selectedTicket, eq)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 hover:underline"
+                                    title="Send equipment directive to engineer on WhatsApp"
+                                  >
+                                    <Send className="w-3 h-3" />
+                                    <span>Send WhatsApp Hardware Directive &rarr;</span>
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="pt-2 flex justify-end">
                       <button
                         onClick={() => saveComplaint(selectedTicket.id)}
@@ -2751,6 +3221,293 @@ export default function AdminPage() {
               </div>
 
             </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 3: LOG SITE EQUIPMENT (REPAIR / REPLACEMENT)       */}
+      {/* ======================================================== */}
+      {isEquipmentModalOpen && selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[90vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-amber-600 to-amber-700 text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <RotateCcw className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">
+                    {editingEquipmentId ? 'Edit Site Equipment Record' : 'Log Equipment Brought from Site'}
+                  </h3>
+                  <p className="text-[11px] text-amber-100">
+                    {selectedTicket.ticketNo} &bull; {selectedTicket.clientName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEquipmentModalOpen(false);
+                  setEditingEquipmentId(null);
+                }}
+                className="p-1 rounded-lg text-amber-100 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveEquipment} className="p-5 space-y-4 overflow-y-auto text-xs">
+              
+              {/* Field 1 & 2: Name and Serial */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-gray-700 font-bold block mb-1">
+                    Equipment / Hardware Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. CP Plus 8-Ch Turbo DVR, 4MP Dome..."
+                    value={equipmentForm.equipmentName}
+                    onChange={e => setEquipmentForm({ ...equipmentForm, equipmentName: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-gray-700 font-bold block mb-1">
+                    Serial Number / Asset Tag
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. CP-DVR-88129"
+                    value={equipmentForm.serialNumber}
+                    onChange={e => setEquipmentForm({ ...equipmentForm, serialNumber: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Action Needed */}
+              <div>
+                <label className="text-gray-700 font-bold block mb-1.5">
+                  Action Required on Hardware *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEquipmentForm({ ...equipmentForm, actionNeeded: 'repair' })}
+                    className={`p-2.5 rounded-xl border text-xs font-bold text-left flex items-center gap-2 transition-all ${
+                      equipmentForm.actionNeeded === 'repair'
+                        ? 'bg-amber-50 border-amber-500 text-amber-900 ring-2 ring-amber-200'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <Wrench className="w-4 h-4 text-amber-600" />
+                    <div>
+                      <div>🔧 Needs Repair</div>
+                      <div className="text-[10px] font-normal text-gray-500">Service Center / Bench</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEquipmentForm({ ...equipmentForm, actionNeeded: 'replace' })}
+                    className={`p-2.5 rounded-xl border text-xs font-bold text-left flex items-center gap-2 transition-all ${
+                      equipmentForm.actionNeeded === 'replace'
+                        ? 'bg-purple-50 border-purple-500 text-purple-900 ring-2 ring-purple-200'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <RotateCw className="w-4 h-4 text-purple-600" />
+                    <div>
+                      <div>🔄 Needs Replacement</div>
+                      <div className="text-[10px] font-normal text-gray-500">Warranty RMA / New Unit</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Fault description */}
+              <div>
+                <label className="text-gray-700 font-bold block mb-1">
+                  Fault / Problem Observation *
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="Specify symptom: e.g. Port 3 & 4 video loss, power supply clicking, water in lens..."
+                  value={equipmentForm.faultDescription}
+                  onChange={e => setEquipmentForm({ ...equipmentForm, faultDescription: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Dates and Office Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-gray-700 font-bold block mb-1">
+                    Date Brought Back to Office
+                  </label>
+                  <input
+                    type="date"
+                    value={equipmentForm.dateBroughtBack}
+                    onChange={e => setEquipmentForm({ ...equipmentForm, dateBroughtBack: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-gray-700 font-bold block mb-1">
+                    Office Handling Status *
+                  </label>
+                  <select
+                    value={equipmentForm.officeStatus}
+                    onChange={e => setEquipmentForm({ ...equipmentForm, officeStatus: e.target.value as any })}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+                  >
+                    <option value="sitting_in_office">🔴 Sitting in Office (Backlog / Needs Action)</option>
+                    <option value="at_service_center">🟡 Sent to Service Center / Vendor RMA</option>
+                    <option value="ready_for_reinstall">🟢 Repaired / Replacement Arrived (Ready for Site)</option>
+                    <option value="reinstalled">✅ Reinstalled at Site (Closed)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Service Center Ref & Notes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-gray-700 font-bold block mb-1">
+                    Service Center / RMA Job Sheet Ref
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. RMA-HK-2026-881"
+                    value={equipmentForm.serviceCenterRef}
+                    onChange={e => setEquipmentForm({ ...equipmentForm, serviceCenterRef: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-gray-700 font-bold block mb-1">
+                    Internal Office Notes
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Placed in rack shelf 2"
+                    value={equipmentForm.notes}
+                    onChange={e => setEquipmentForm({ ...equipmentForm, notes: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Temporary Standby Device Section */}
+              <div className="p-3.5 rounded-xl border border-amber-300 bg-amber-50/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={equipmentForm.hasTemporaryDevice}
+                      onChange={e => setEquipmentForm({ ...equipmentForm, hasTemporaryDevice: e.target.checked })}
+                      className="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                    />
+                    <span className="font-bold text-gray-900 text-xs">
+                      Temporary Standby Device Installed at Site
+                    </span>
+                  </label>
+                  <span className="text-[10px] text-amber-800 font-medium">Prevents client site downtime</span>
+                </div>
+
+                {equipmentForm.hasTemporaryDevice && (
+                  <div className="space-y-3 pt-2 border-t border-amber-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-gray-700 font-medium block mb-1 text-[11px]">
+                          Temporary Device Model / Name *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Digitech Loaner 4-Ch DVR"
+                          value={equipmentForm.tempDeviceName}
+                          onChange={e => setEquipmentForm({ ...equipmentForm, tempDeviceName: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-gray-700 font-medium block mb-1 text-[11px]">
+                          Standby Serial / Asset ID
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. SBY-DVR-02"
+                          value={equipmentForm.tempDeviceSerial}
+                          onChange={e => setEquipmentForm({ ...equipmentForm, tempDeviceSerial: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 font-mono focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-gray-700 font-medium block mb-1 text-[11px]">
+                          Date Deployed at Site
+                        </label>
+                        <input
+                          type="date"
+                          value={equipmentForm.tempDeviceDeployedDate}
+                          onChange={e => setEquipmentForm({ ...equipmentForm, tempDeviceDeployedDate: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-gray-700 font-medium block mb-1 text-[11px]">
+                          Standby Recovery Status
+                        </label>
+                        <select
+                          value={equipmentForm.tempDeviceRecoveryStatus}
+                          onChange={e => setEquipmentForm({ ...equipmentForm, tempDeviceRecoveryStatus: e.target.value as any })}
+                          className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+                        >
+                          <option value="deployed">⚠️ Currently Deployed at Site (Needs Recovery)</option>
+                          <option value="recovered">✅ Recovered Back to Office Locker</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEquipmentModalOpen(false);
+                    setEditingEquipmentId(null);
+                  }}
+                  className="px-4 py-2 rounded-xl text-gray-600 hover:bg-gray-100 font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold transition-all shadow-md flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>{editingEquipmentId ? 'Save Changes' : 'Save Equipment Record'}</span>
+                </button>
+              </div>
+
+            </form>
 
           </div>
         </div>

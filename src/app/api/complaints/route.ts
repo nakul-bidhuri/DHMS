@@ -22,7 +22,31 @@ let memoryComplaints: any[] = [
     channel: 'WhatsApp',
     status: 'Open',
     date: '2026-10-15',
-    objId: 'ff808181a09d98f701a140e68c6f6b3a'
+    engineer1: 'Abdul Latif',
+    engineer2: 'Shahrukh Khan',
+    objId: 'ff808181a09d98f701a140e68c6f6b3a',
+    siteEquipments: [
+      {
+        id: 'eq-1004-1',
+        ticketId: 4,
+        ticketNo: 'TKT-1004',
+        clientName: 'nakul',
+        address: 'Delhi NCR',
+        equipmentName: 'Hikvision 4MP IP Dome Camera (DS-2CD2143G2-I)',
+        serialNumber: 'HK-CAM-44021',
+        actionNeeded: 'replace',
+        faultDescription: 'Water ingress in lens barrel, IR cut filter defective',
+        dateBroughtBack: '2026-10-20',
+        officeStatus: 'at_service_center',
+        serviceCenterRef: 'RMA-HK-2026-881',
+        hasTemporaryDevice: true,
+        tempDeviceName: 'Digitech Standby 2MP Dome Camera',
+        tempDeviceSerial: 'SBY-CAM-05',
+        tempDeviceDeployedDate: '2026-10-20',
+        tempDeviceRecoveryStatus: 'deployed',
+        notes: 'Handed over to Hikvision Nehru Place service desk for warranty replacement.'
+      }
+    ]
   },
   {
     id: 3,
@@ -38,7 +62,31 @@ let memoryComplaints: any[] = [
     channel: 'Email',
     status: 'Open',
     date: '2026-10-15',
-    objId: 'ff808181a09d98f701a140e68d966b3b'
+    engineer1: 'Govind Kumar',
+    engineer2: 'Sameer Saifi',
+    objId: 'ff808181a09d98f701a140e68d966b3b',
+    siteEquipments: [
+      {
+        id: 'eq-1003-1',
+        ticketId: 3,
+        ticketNo: 'TKT-1003',
+        clientName: 'Test',
+        address: 'Noida Sec 62',
+        equipmentName: 'D-Link 8-Port Gigabit PoE Switch (DGS-1008P)',
+        serialNumber: 'DL-POE-9011',
+        actionNeeded: 'repair',
+        faultDescription: 'Surge damage after power fluctuation, ports 1-4 not powering up',
+        dateBroughtBack: '2026-10-16',
+        officeStatus: 'ready_for_reinstall',
+        serviceCenterRef: 'DL-SVC-410',
+        hasTemporaryDevice: true,
+        tempDeviceName: 'Digitech Standby 4-Port PoE Switch',
+        tempDeviceSerial: 'SBY-POE-01',
+        tempDeviceDeployedDate: '2026-10-16',
+        tempDeviceRecoveryStatus: 'deployed',
+        notes: 'Power IC replaced by service center. Tested OK. Ready for site swap & standby recovery.'
+      }
+    ]
   },
   {
     id: 2,
@@ -54,13 +102,34 @@ let memoryComplaints: any[] = [
     priority: 'P2',
     channel: 'WhatsApp',
     assignedDate: '2026-09-27',
-    engineer1: 'Sharukh',
-    engineer2: 'Abdul',
+    engineer1: 'Shahrukh Khan',
+    engineer2: 'Abdul Latif',
     finding: 'connector fault',
     actionTaken: 'repaired',
     status: 'Pending',
     remarks: 'U/AMC',
-    objId: 'ff808181a09d98f701a140e68e466b3c'
+    objId: 'ff808181a09d98f701a140e68e466b3c',
+    siteEquipments: [
+      {
+        id: 'eq-1002-1',
+        ticketId: 2,
+        ticketNo: 'TKT-1002',
+        clientName: 'mishra',
+        address: 'New Delhi',
+        equipmentName: 'CP Plus 8-Ch Turbo HD DVR (CP-UAR-0801Q1)',
+        serialNumber: 'CP-DVR-88129',
+        actionNeeded: 'repair',
+        faultDescription: 'BNC Port 3 & 4 video signal lost, motherboard overheating',
+        dateBroughtBack: '2026-10-18',
+        officeStatus: 'sitting_in_office',
+        hasTemporaryDevice: true,
+        tempDeviceName: 'Digitech Loaner 4-Ch Standby DVR',
+        tempDeviceSerial: 'SBY-DVR-02',
+        tempDeviceDeployedDate: '2026-10-18',
+        tempDeviceRecoveryStatus: 'deployed',
+        notes: 'Sitting in office repair queue. Needs bench testing or dispatch to service center.'
+      }
+    ]
   },
   {
     id: 1,
