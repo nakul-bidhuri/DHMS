@@ -22,7 +22,8 @@ import {
   ArrowRightLeft,
   ExternalLink,
   Layers,
-  HardDrive
+  HardDrive,
+  Bell
 } from 'lucide-react';
 import { 
   ROSTER_ENGINEERS, 
@@ -70,6 +71,7 @@ export interface SiteEquipmentItem {
   actionNeeded: 'repair' | 'replace';
   faultDescription: string;
   dateBroughtBack: string;
+  expectedReinstallDate?: string;
   officeStatus: 'sitting_in_office' | 'at_service_center' | 'ready_for_reinstall' | 'reinstalled';
   serviceCenterRef?: string;
   notes?: string;
@@ -84,6 +86,78 @@ export interface SiteEquipmentItem {
   roundRobinEngineer?: string;
 }
 
+// 5-Day Prior Alert Calculation for Equipment Reinstallation
+export function getReinstallDueInfo(eq: { officeStatus?: string; expectedReinstallDate?: string; dateBroughtBack?: string }) {
+  if (eq.officeStatus === 'reinstalled') {
+    return { isDueWithin5Days: false, isOverdue: false, isDueToday: false, daysLeft: 999, dueDateStr: '', label: 'Reinstalled' };
+  }
+  let dueDateStr = eq.expectedReinstallDate;
+  if (!dueDateStr && eq.dateBroughtBack) {
+    const d = new Date(eq.dateBroughtBack);
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() + 7);
+      dueDateStr = d.toISOString().split('T')[0];
+    }
+  }
+  if (!dueDateStr) {
+    return { isDueWithin5Days: false, isOverdue: false, isDueToday: false, daysLeft: 999, dueDateStr: '', label: 'No due date' };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDateStr);
+  due.setHours(0, 0, 0, 0);
+  const diffTime = due.getTime() - today.getTime();
+  const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  const isDueWithin5Days = daysLeft <= 5;
+  const isOverdue = daysLeft < 0;
+  const isDueToday = daysLeft === 0;
+
+  return {
+    isDueWithin5Days,
+    isOverdue,
+    isDueToday,
+    daysLeft,
+    dueDateStr,
+    label: isOverdue 
+      ? `Overdue by ${Math.abs(daysLeft)}d` 
+      : isDueToday 
+      ? 'Due Today' 
+      : `Due in ${daysLeft}d`
+  };
+}
+
+// 5-Day Prior Alert Calculation for Company Tools Return
+export function getToolDueInfo(tool: { status?: string; expectedReturnDate?: string }) {
+  if (tool.status === 'Returned' || !tool.expectedReturnDate) {
+    return { isDueWithin5Days: false, isOverdue: false, isDueToday: false, daysLeft: 999, dueDateStr: tool.expectedReturnDate || '', label: 'Returned' };
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(tool.expectedReturnDate);
+  due.setHours(0, 0, 0, 0);
+  const diffTime = due.getTime() - today.getTime();
+  const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  const isDueWithin5Days = daysLeft <= 5;
+  const isOverdue = daysLeft < 0;
+  const isDueToday = daysLeft === 0;
+
+  return {
+    isDueWithin5Days,
+    isOverdue,
+    isDueToday,
+    daysLeft,
+    dueDateStr: tool.expectedReturnDate,
+    label: isOverdue 
+      ? `Overdue by ${Math.abs(daysLeft)}d` 
+      : isDueToday 
+      ? 'Due Today' 
+      : `Due in ${daysLeft}d`
+  };
+}
+
 export interface ToolsInventoryViewProps {
   complaintTickets?: any[];
   onUpdateComplaint?: (id: string | number, field: string, value: any) => void;
@@ -91,7 +165,9 @@ export interface ToolsInventoryViewProps {
   onSaveComplaint?: (id: string | number, updatedTicket?: any) => Promise<void>;
   tools?: ToolItem[];
   onUpdateTools?: (newTools: ToolItem[]) => void;
-  initialTab?: 'tools' | 'backlog';
+  initialTab?: 'all' | 'tools' | 'backlog';
+  onOpenNotifications?: () => void;
+  totalAlertsCount?: number;
 }
 
 // Initial realistic preloaded operational tools for CCTV & Telecom field engineers
@@ -222,10 +298,12 @@ export default function ToolsInventoryView({
   onSaveComplaint,
   tools: externalTools,
   onUpdateTools,
-  initialTab = 'backlog'
+  initialTab = 'all',
+  onOpenNotifications,
+  totalAlertsCount = 0
 }: ToolsInventoryViewProps) {
-  // Navigation: Dual Tabs ('tools' = Company Tools Locker, 'backlog' = Site Equipment Repair & Replacement Backlog)
-  const [activeTab, setActiveTab] = useState<'tools' | 'backlog'>(initialTab);
+  // Navigation: 'all' = Show Both Sections, 'tools' = Company Tools Locker, 'backlog' = Site Equipment Backlog
+  const [activeTab, setActiveTab] = useState<'all' | 'tools' | 'backlog'>(initialTab);
 
   // --- COMPANY TOOLS STATE ---
   const [internalTools, setInternalTools] = useState<ToolItem[]>([]);
@@ -436,6 +514,7 @@ export default function ToolsInventoryView({
     actionNeeded: 'repair' | 'replace';
     faultDescription: string;
     dateBroughtBack: string;
+    expectedReinstallDate: string;
     officeStatus: 'sitting_in_office' | 'at_service_center' | 'ready_for_reinstall' | 'reinstalled';
     serviceCenterRef: string;
     notes: string;
@@ -450,6 +529,7 @@ export default function ToolsInventoryView({
     actionNeeded: 'repair',
     faultDescription: '',
     dateBroughtBack: new Date().toISOString().split('T')[0],
+    expectedReinstallDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
     officeStatus: 'sitting_in_office',
     serviceCenterRef: '',
     notes: '',
@@ -502,6 +582,7 @@ export default function ToolsInventoryView({
       actionNeeded: 'repair',
       faultDescription: '',
       dateBroughtBack: new Date().toISOString().split('T')[0],
+      expectedReinstallDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
       officeStatus: 'sitting_in_office',
       serviceCenterRef: '',
       notes: '',
@@ -517,11 +598,13 @@ export default function ToolsInventoryView({
   const getBacklogWhatsAppUrl = (item: SiteEquipmentItem) => {
     const engName = item.engineer1 || 'Lead Engineer';
     const phone = getEngineerPhone(engName);
+    const dueInfo = getReinstallDueInfo(item);
     const lines = [
       `*========================================*`,
       `*DIGITECH SERVICES | SITE HARDWARE DIRECTIVE*`,
       `*========================================*`,
       ``,
+      `*Attention:* ${engName}`,
       `*Ticket ID:* ${item.ticketNo}`,
       `*Client:* ${item.clientName}`,
       `*Site Address:* ${item.address}`,
@@ -531,6 +614,7 @@ export default function ToolsInventoryView({
       item.serialNumber ? `*Serial No:* ${item.serialNumber}` : '',
       `*Action Needed:* ${item.actionNeeded === 'repair' ? 'REPAIR' : 'REPLACEMENT'}`,
       `*Office Status:* ${item.officeStatus.toUpperCase().replace(/_/g, ' ')}`,
+      dueInfo.dueDateStr ? `*Target Reinstall Date:* ${dueInfo.dueDateStr} *[${dueInfo.label.toUpperCase()}]*` : '',
       item.serviceCenterRef ? `*Service Ref:* ${item.serviceCenterRef}` : '',
       ``,
       item.hasTemporaryDevice ? [
@@ -541,7 +625,9 @@ export default function ToolsInventoryView({
       ].filter(Boolean).join('\n') : '',
       ``,
       `*-- [OPERATIONAL DIRECTIVE] --*`,
-      item.officeStatus === 'ready_for_reinstall' 
+      dueInfo.isDueWithin5Days
+        ? `>> REINSTALLATION ALERT: This hardware is due for site reinstallation ${dueInfo.daysLeft <= 0 ? 'NOW (OVERDUE)' : `in ${dueInfo.daysLeft} days`} (${dueInfo.dueDateStr}).\n>> Please collect unit from office and complete site reinstallation & loaner recovery!`
+        : item.officeStatus === 'ready_for_reinstall' 
         ? `>> Collect repaired/replaced unit from Digitech office.\n>> Reinstall at client site and RECOVER temporary standby unit [${item.tempDeviceName || 'loaner unit'}] back to office!`
         : item.officeStatus === 'sitting_in_office'
         ? `>> Hardware is sitting in office backlog. Please prioritize bench testing or dispatch to vendor service center.`
@@ -701,26 +787,40 @@ export default function ToolsInventoryView({
       )}
 
       {/* Top Header */}
-      <div className="px-8 pt-7 pb-4 bg-white border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+      <div className="px-6 md:px-8 pt-6 pb-4 bg-white border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-              Operations & Logistics
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+              Logistics
             </span>
-            <span className="text-xs text-gray-400 font-medium">
-              Field Asset & Equipment Locker
+            <span className="text-xs text-gray-400">
+              Asset & Equipment Hub
             </span>
           </div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight mt-1 flex items-center gap-3">
-            <ToolsInventoryLogo className="w-8 h-8" />
-            <span>Tools & Equipment Management</span>
+          <h1 className="text-xl font-black text-gray-900 tracking-tight mt-1 flex items-center gap-2.5">
+            <ToolsInventoryLogo className="w-7 h-7" />
+            <span>Tools & Equipment Hub</span>
           </h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Manage company tool issuance to technicians and track customer hardware brought back for repair/replacement with standby device logging.
-          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {onOpenNotifications && (
+            <button
+              type="button"
+              onClick={onOpenNotifications}
+              className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              title="Open Admin Notifications"
+            >
+              <Bell className="w-4 h-4 text-rose-600" />
+              <span className="hidden sm:inline">Due Alerts</span>
+              {totalAlertsCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-rose-600 text-white animate-pulse">
+                  {totalAlertsCount}
+                </span>
+              )}
+            </button>
+          )}
+
           <button
             onClick={() => {
               if (complaintTickets.length > 0) {
@@ -729,10 +829,10 @@ export default function ToolsInventoryView({
               setActiveTab('backlog');
               setIsAddBacklogModalOpen(true);
             }}
-            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+            className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>+ Log Equipment Brought from Site</span>
+            <span>+ Log Site Equipment</span>
           </button>
 
           <button
@@ -740,75 +840,107 @@ export default function ToolsInventoryView({
               setActiveTab('tools');
               setIsIssueModalOpen(true);
             }}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#e11d48] to-[#be123c] hover:from-[#be123c] hover:to-[#9f1239] text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-rose-950/20 transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#e11d48] to-[#be123c] hover:from-[#be123c] hover:to-[#9f1239] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>+ Issue Tool to Engineer</span>
+            <span>+ Issue Tool</span>
           </button>
         </div>
       </div>
 
-      {/* DUAL TAB SWITCHER */}
-      <div className="px-8 bg-white border-b border-gray-200 flex items-center gap-6">
-        <button
-          type="button"
-          onClick={() => setActiveTab('backlog')}
-          className={`py-3.5 px-2 text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-            activeTab === 'backlog'
-              ? 'border-amber-600 text-amber-700'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          <RotateCcw className="w-4 h-4 text-amber-600" />
-          <span>Site Equipment: Repair & Replacement Backlog</span>
-          {backlogStats.sittingCount > 0 ? (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-100 text-red-700 border border-red-300 animate-pulse">
-              🔴 {backlogStats.sittingCount} in office
+      {/* VIEW SWITCHER: SHOW BOTH SECTIONS | ISSUE TOOLS | EQUIPMENT BROUGHT FROM SITE */}
+      <div className="px-6 md:px-8 py-3 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-10 shadow-xs">
+        <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setActiveTab('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'all'
+                ? 'bg-white text-gray-900 shadow-xs ring-1 ring-gray-200'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-gray-700" />
+            <span>Show Both Sections</span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-gray-200 text-gray-800 font-bold">
+              {tools.length + allSiteEquipments.length}
             </span>
-          ) : (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-100 text-gray-700">
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('tools')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'tools'
+                ? 'bg-white text-[#be123c] shadow-xs ring-1 ring-rose-200'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Wrench className="w-3.5 h-3.5 text-[#be123c]" />
+            <span>Issue Tools to Engineer</span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-rose-100 text-rose-800 font-bold">
+              {tools.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('backlog')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'backlog'
+                ? 'bg-white text-amber-700 shadow-xs ring-1 ring-amber-200'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+            <span>Equipment Brought from Site</span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-amber-100 text-amber-800 font-bold">
               {allSiteEquipments.length}
             </span>
-          )}
-          {backlogStats.activeStandbyCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-300">
-              ⚠️ {backlogStats.activeStandbyCount} standby deployed
-            </span>
-          )}
-        </button>
+          </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('tools')}
-          className={`py-3.5 px-2 text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
-            activeTab === 'tools'
-              ? 'border-[#be123c] text-[#be123c]'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          <Wrench className="w-4 h-4" />
-          <span>Company Tools Locker</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-100 text-gray-700">
-            {tools.length} total &bull; {stats.issued} issued
-          </span>
-        </button>
+        <div className="text-xs text-gray-500 font-medium hidden md:block">
+          {activeTab === 'all' ? 'Displaying both sections on one page' : activeTab === 'tools' ? 'Viewing Company Tools Locker only' : 'Viewing Site Equipment Backlog only'}
+        </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* TAB 1: COMPANY TOOLS LOCKER                              */}
-      {/* ======================================================== */}
-      {activeTab === 'tools' ? (
-        <div className="p-8 space-y-6">
+      <div className="p-6 md:p-8 space-y-10">
+
+        {/* ======================================================== */}
+        {/* SECTION 1: ISSUE TOOLS TO ENGINEER (COMPANY TOOLS)       */}
+        {/* ======================================================== */}
+        {(activeTab === 'all' || activeTab === 'tools') && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                    Section 1
+                  </span>
+                  <h2 className="text-base font-black text-gray-900">Issue Tools to Engineer (Company Tools Locker)</h2>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Internal company tools (drills, splicers, testers) issued to field engineers with return tracking
+                </p>
+              </div>
+              <button
+                onClick={() => setIsIssueModalOpen(true)}
+                className="self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#e11d48] to-[#be123c] hover:from-[#be123c] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>+ Issue Tool</span>
+              </button>
+            </div>
 
           {/* KPI Metric Summary Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* Card 1: Total */}
-            <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm flex items-center justify-between">
+            <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-xs flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Tracked Tools</p>
                 <p className="text-2xl font-black text-gray-900 mt-0.5 font-mono">{stats.total}</p>
-                <span className="text-[10px] text-gray-500">In company inventory</span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
                 <Boxes className="w-5 h-5 text-slate-700" />
@@ -818,14 +950,13 @@ export default function ToolsInventoryView({
             {/* Card 2: Currently Issued (In Field) */}
             <div 
               onClick={() => setStatusFilter(statusFilter === 'Issued' ? 'All' : 'Issued')}
-              className={`bg-white rounded-2xl p-4 border shadow-sm flex items-center justify-between cursor-pointer transition-all ${
-                statusFilter === 'Issued' ? 'border-amber-500 ring-2 ring-amber-200' : 'border-amber-200 hover:border-amber-400'
+              className={`bg-white rounded-xl p-4 border shadow-xs flex items-center justify-between cursor-pointer transition-all ${
+                statusFilter === 'Issued' ? 'border-amber-500 ring-2 ring-amber-100' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <div>
-                <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Issued (In Field)</p>
+                <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Issued to Techs</p>
                 <p className="text-2xl font-black text-amber-700 mt-0.5 font-mono">{stats.issued}</p>
-                <span className="text-[10px] text-amber-600 font-medium">Currently with engineers</span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
                 <Wrench className="w-5 h-5 text-amber-600" />
@@ -835,14 +966,13 @@ export default function ToolsInventoryView({
             {/* Card 3: Overdue Returns */}
             <div 
               onClick={() => setStatusFilter(statusFilter === 'Overdue' ? 'All' : 'Overdue')}
-              className={`bg-white rounded-2xl p-4 border shadow-sm flex items-center justify-between cursor-pointer transition-all ${
-                statusFilter === 'Overdue' ? 'border-rose-500 ring-2 ring-rose-200' : 'border-rose-200 hover:border-rose-400'
+              className={`bg-white rounded-xl p-4 border shadow-xs flex items-center justify-between cursor-pointer transition-all ${
+                statusFilter === 'Overdue' ? 'border-rose-500 ring-2 ring-rose-100' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <div>
                 <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">Overdue Returns</p>
                 <p className="text-2xl font-black text-rose-700 mt-0.5 font-mono">{stats.overdue}</p>
-                <span className="text-[10px] text-rose-600 font-medium">Action / Reminder required</span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
                 <AlertTriangle className="w-5 h-5 text-rose-600" />
@@ -852,14 +982,13 @@ export default function ToolsInventoryView({
             {/* Card 4: Returned in Locker */}
             <div 
               onClick={() => setStatusFilter(statusFilter === 'Returned' ? 'All' : 'Returned')}
-              className={`bg-white rounded-2xl p-4 border shadow-sm flex items-center justify-between cursor-pointer transition-all ${
-                statusFilter === 'Returned' ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-emerald-200 hover:border-emerald-400'
+              className={`bg-white rounded-xl p-4 border shadow-xs flex items-center justify-between cursor-pointer transition-all ${
+                statusFilter === 'Returned' ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <div>
-                <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Returned in Locker</p>
+                <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">In Locker</p>
                 <p className="text-2xl font-black text-emerald-700 mt-0.5 font-mono">{stats.returned}</p>
-                <span className="text-[10px] text-emerald-600 font-medium">Ready for next assignment</span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -1133,36 +1262,69 @@ export default function ToolsInventoryView({
             </div>
           </div>
 
-        </div>
-      ) : (
-        /* ======================================================== */
-        /* TAB 2: SITE EQUIPMENT REPAIR & REPLACEMENT BACKLOG       */
-        /* ======================================================== */
-        <div className="p-8 space-y-6">
+          </div>
+        )}
+
+        {/* Divider between sections when both are shown */}
+        {activeTab === 'all' && (
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-[#f8fafc] px-4 text-xs font-bold uppercase tracking-wider text-gray-500">
+                Site Hardware Backlog & Standby Units
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* SECTION 2: EQUIPMENT BROUGHT FROM SITE (SITE BACKLOG)    */}
+        {/* ======================================================== */}
+        {(activeTab === 'all' || activeTab === 'backlog') && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Section 2
+                  </span>
+                  <h2 className="text-base font-black text-gray-900">Equipment Brought from Site (Site Equipment & Standby Backlog)</h2>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Customer hardware removed for bench repair/replacement with 5-day reinstall alerts and standby recovery
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  if (complaintTickets.length > 0) {
+                    setBacklogFormTicketId(complaintTickets[0].id);
+                  }
+                  setIsAddBacklogModalOpen(true);
+                }}
+                className="self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>+ Log Site Equipment</span>
+              </button>
+            </div>
 
           {/* KPI Metric Summary Strip for Backlog & Standby Tracker */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
-            {/* Card 1: Sitting in Office Backlog (High Attention Alert) */}
+            {/* Card 1: Sitting in Office Backlog */}
             <div 
               onClick={() => setBacklogStatusFilter(backlogStatusFilter === 'sitting_in_office' ? 'All' : 'sitting_in_office')}
-              className={`bg-white rounded-2xl p-4 border shadow-sm flex items-center justify-between cursor-pointer transition-all ${
+              className={`bg-white rounded-xl p-4 border shadow-xs flex items-center justify-between cursor-pointer transition-all ${
                 backlogStatusFilter === 'sitting_in_office' 
-                  ? 'border-red-500 ring-2 ring-red-200' 
-                  : backlogStats.sittingCount > 0 
-                  ? 'border-red-300 bg-red-50/20 hover:border-red-400' 
-                  : 'border-gray-200'
+                  ? 'border-red-500 ring-2 ring-red-100' 
+                  : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <div>
-                <p className="text-[11px] font-bold text-red-600 uppercase tracking-wider flex items-center gap-1">
-                  <span>Sitting in Office (Backlog)</span>
-                  {backlogStats.sittingCount > 0 && (
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                  )}
-                </p>
+                <p className="text-[11px] font-bold text-red-600 uppercase tracking-wider">In Office (Backlog)</p>
                 <p className="text-2xl font-black text-red-700 mt-0.5 font-mono">{backlogStats.sittingCount}</p>
-                <span className="text-[10px] text-red-600 font-medium">Pending action &bull; causing clutter</span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -1172,14 +1334,13 @@ export default function ToolsInventoryView({
             {/* Card 2: At Service Center / Vendor RMA */}
             <div 
               onClick={() => setBacklogStatusFilter(backlogStatusFilter === 'at_service_center' ? 'All' : 'at_service_center')}
-              className={`bg-white rounded-2xl p-4 border shadow-sm flex items-center justify-between cursor-pointer transition-all ${
-                backlogStatusFilter === 'at_service_center' ? 'border-amber-500 ring-2 ring-amber-200' : 'border-amber-200 hover:border-amber-400'
+              className={`bg-white rounded-xl p-4 border shadow-xs flex items-center justify-between cursor-pointer transition-all ${
+                backlogStatusFilter === 'at_service_center' ? 'border-amber-500 ring-2 ring-amber-100' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <div>
-                <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">At Service Center / RMA</p>
+                <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Service Center / RMA</p>
                 <p className="text-2xl font-black text-amber-700 mt-0.5 font-mono">{backlogStats.serviceCenterCount}</p>
-                <span className="text-[10px] text-amber-600 font-medium">Under warranty or bench repair</span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
                 <Wrench className="w-5 h-5 text-amber-600" />
@@ -1189,14 +1350,13 @@ export default function ToolsInventoryView({
             {/* Card 3: Ready for Site Reinstallation */}
             <div 
               onClick={() => setBacklogStatusFilter(backlogStatusFilter === 'ready_for_reinstall' ? 'All' : 'ready_for_reinstall')}
-              className={`bg-white rounded-2xl p-4 border shadow-sm flex items-center justify-between cursor-pointer transition-all ${
-                backlogStatusFilter === 'ready_for_reinstall' ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-emerald-200 hover:border-emerald-400'
+              className={`bg-white rounded-xl p-4 border shadow-xs flex items-center justify-between cursor-pointer transition-all ${
+                backlogStatusFilter === 'ready_for_reinstall' ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <div>
                 <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Ready for Site</p>
                 <p className="text-2xl font-black text-emerald-700 mt-0.5 font-mono">{backlogStats.readyCount}</p>
-                <span className="text-[10px] text-emerald-600 font-medium">Repaired & ready to reinstall</span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -1206,14 +1366,13 @@ export default function ToolsInventoryView({
             {/* Card 4: Active Standby Units Deployed on Site (Recovery Alert) */}
             <div 
               onClick={() => setBacklogStandbyFilter(backlogStandbyFilter === 'deployed' ? 'All' : 'deployed')}
-              className={`bg-white rounded-2xl p-4 border shadow-sm flex items-center justify-between cursor-pointer transition-all ${
-                backlogStandbyFilter === 'deployed' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-purple-200 hover:border-purple-400'
+              className={`bg-white rounded-xl p-4 border shadow-xs flex items-center justify-between cursor-pointer transition-all ${
+                backlogStandbyFilter === 'deployed' ? 'border-purple-500 ring-2 ring-purple-100' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <div>
-                <p className="text-[11px] font-bold text-purple-600 uppercase tracking-wider">Standby Deployed on Site</p>
+                <p className="text-[11px] font-bold text-purple-600 uppercase tracking-wider">Standby on Site</p>
                 <p className="text-2xl font-black text-purple-700 mt-0.5 font-mono">{backlogStats.activeStandbyCount}</p>
-                <span className="text-[10px] text-purple-600 font-medium">Temporary devices awaiting recovery</span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
                 <HardDrive className="w-5 h-5 text-purple-600" />
@@ -1223,16 +1382,16 @@ export default function ToolsInventoryView({
           </div>
 
           {/* Search & Filter Bar */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="bg-white rounded-xl border border-gray-200 p-3.5 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             
             <div className="relative flex-1 max-w-md">
               <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search ticket, customer, device, serial, or standby ID..."
+                placeholder="Search ticket, customer, device, or serial..."
                 value={backlogSearch}
                 onChange={e => setBacklogSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
             </div>
 
@@ -1242,9 +1401,9 @@ export default function ToolsInventoryView({
               <select
                 value={backlogActionFilter}
                 onChange={e => setBacklogActionFilter(e.target.value as any)}
-                className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
               >
-                <option value="All">All Actions (Repair / Replace)</option>
+                <option value="All">All Actions</option>
                 <option value="repair">🔧 Needs Repair</option>
                 <option value="replace">🔄 Needs Replacement</option>
               </select>
@@ -1253,25 +1412,25 @@ export default function ToolsInventoryView({
               <select
                 value={backlogStatusFilter}
                 onChange={e => setBacklogStatusFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
               >
-                <option value="All">All Office Statuses</option>
-                <option value="sitting_in_office">🔴 Sitting in Office Backlog</option>
-                <option value="at_service_center">🟡 At Service Center / RMA</option>
+                <option value="All">All Statuses</option>
+                <option value="sitting_in_office">🔴 In Office</option>
+                <option value="at_service_center">🟡 Service Center / RMA</option>
                 <option value="ready_for_reinstall">🟢 Ready for Site</option>
-                <option value="reinstalled">✅ Reinstalled at Site</option>
+                <option value="reinstalled">✅ Reinstalled</option>
               </select>
 
               {/* Standby Filter */}
               <select
                 value={backlogStandbyFilter}
                 onChange={e => setBacklogStandbyFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
               >
-                <option value="All">All Standby Statuses</option>
-                <option value="deployed">⚠️ Standby Deployed on Site</option>
-                <option value="recovered">✅ Standby Recovered to Locker</option>
-                <option value="none">No Standby Attached</option>
+                <option value="All">All Standby</option>
+                <option value="deployed">⚠️ Standby Deployed</option>
+                <option value="recovered">✅ Standby Recovered</option>
+                <option value="none">No Standby</option>
               </select>
 
               {(backlogActionFilter !== 'All' || backlogStatusFilter !== 'All' || backlogStandbyFilter !== 'All' || backlogSearch) && (
@@ -1295,23 +1454,17 @@ export default function ToolsInventoryView({
           <div className="space-y-3">
             <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-gray-500">
               <div className="flex items-center gap-2">
-                <span>Site Equipment Backlog & Standby Devices</span>
+                <span>Site Equipment Backlog</span>
                 <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-gray-100 text-gray-700">
                   {filteredBacklog.length} records
                 </span>
               </div>
-              <span className="text-[11px] font-normal text-gray-400 capitalize">
-                Click any ticket number to view the complaint in Admin Inbox
-              </span>
             </div>
 
             {filteredBacklog.length === 0 ? (
-              <div className="p-12 bg-white rounded-2xl border border-dashed border-gray-200 text-center space-y-2">
-                <RotateCcw className="w-10 h-10 mx-auto text-gray-300" />
-                <h3 className="font-bold text-gray-800 text-sm">No Site Equipment Records Found</h3>
-                <p className="text-xs text-gray-400 max-w-md mx-auto">
-                  When hardware is brought back from a customer site for repair or replacement, log it here or in Step 2 of the ticket. This keeps the office clear of clutter and tracks loaner devices deployed in the field.
-                </p>
+              <div className="p-8 bg-white rounded-xl border border-gray-200 text-center space-y-2">
+                <RotateCcw className="w-8 h-8 mx-auto text-gray-300" />
+                <h3 className="font-bold text-gray-800 text-sm">No Site Equipment Records</h3>
                 <button
                   onClick={() => {
                     if (complaintTickets.length > 0) {
@@ -1319,29 +1472,22 @@ export default function ToolsInventoryView({
                     }
                     setIsAddBacklogModalOpen(true);
                   }}
-                  className="mt-3 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"
+                  className="mt-2 px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>+ Log Equipment Brought from Site</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Log Site Equipment</span>
                 </button>
               </div>
             ) : (
               <div className="space-y-3">
                 {filteredBacklog.map(item => {
-                  const isSittingInOffice = item.officeStatus === 'sitting_in_office';
-                  const isReady = item.officeStatus === 'ready_for_reinstall';
                   const isStandbyActive = item.hasTemporaryDevice && item.tempDeviceRecoveryStatus === 'deployed';
+                  const dueInfo = getReinstallDueInfo(item);
 
                   return (
                     <div
                       key={item.id}
-                      className={`p-5 rounded-2xl border bg-white shadow-sm space-y-3.5 transition-all ${
-                        isSittingInOffice 
-                          ? 'border-red-300 ring-1 ring-red-200' 
-                          : isReady 
-                          ? 'border-emerald-300 ring-1 ring-emerald-200' 
-                          : 'border-gray-200'
-                      }`}
+                      className="p-4 rounded-xl border border-gray-200 bg-white shadow-xs space-y-3 hover:border-gray-300 transition-colors"
                     >
                       {/* Top Header Row */}
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
@@ -1350,8 +1496,8 @@ export default function ToolsInventoryView({
                           <button
                             type="button"
                             onClick={() => onSelectTicket?.(item.ticketId)}
-                            className="font-mono font-bold text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 flex items-center gap-1 shadow-sm transition-all"
-                            title="Jump directly to this ticket in Inbox"
+                            className="font-mono font-bold text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200 flex items-center gap-1 transition-all"
+                            title="Jump to ticket in Inbox"
                           >
                             <span>{item.ticketNo}</span>
                             <ExternalLink className="w-3 h-3 text-blue-500" />
@@ -1366,12 +1512,12 @@ export default function ToolsInventoryView({
 
                           {/* Action Badge */}
                           {item.actionNeeded === 'repair' ? (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
                               <Wrench className="w-3 h-3 text-amber-700" />
                               <span>Needs Repair</span>
                             </span>
                           ) : (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200 flex items-center gap-1">
                               <RotateCw className="w-3 h-3 text-purple-700" />
                               <span>Needs Replacement</span>
                             </span>
@@ -1380,30 +1526,29 @@ export default function ToolsInventoryView({
 
                         {/* Status Dropdown and Delete */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          <label className="text-[11px] text-gray-500 font-medium">Office Status:</label>
                           <select
                             value={item.officeStatus}
                             onChange={e => handleUpdateBacklogStatus(item.ticketId, item.id, e.target.value as any)}
-                            className={`text-xs font-bold rounded-xl px-3 py-1.5 border focus:outline-none shadow-sm cursor-pointer ${
+                            className={`text-xs font-bold rounded-lg px-2.5 py-1 border focus:outline-none cursor-pointer ${
                               item.officeStatus === 'sitting_in_office'
-                                ? 'bg-red-50 text-red-800 border-red-300'
+                                ? 'bg-red-50 text-red-800 border-red-200'
                                 : item.officeStatus === 'at_service_center'
-                                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
                                 : item.officeStatus === 'ready_for_reinstall'
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                : 'bg-gray-100 text-gray-700 border-gray-300'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-gray-100 text-gray-700 border-gray-200'
                             }`}
                           >
-                            <option value="sitting_in_office">🔴 Sitting in Office (Backlog / Needs Action)</option>
-                            <option value="at_service_center">🟡 Sent to Service Center / Vendor RMA</option>
-                            <option value="ready_for_reinstall">🟢 Repaired / Replacement Arrived (Ready for Site)</option>
-                            <option value="reinstalled">✅ Reinstalled at Site (Closed)</option>
+                            <option value="sitting_in_office">🔴 In Office</option>
+                            <option value="at_service_center">🟡 At Service Center (RMA)</option>
+                            <option value="ready_for_reinstall">🟢 Ready for Site</option>
+                            <option value="reinstalled">✅ Reinstalled at Site</option>
                           </select>
 
                           <button
                             type="button"
                             onClick={() => handleDeleteBacklogEquipment(item.ticketId, item.id)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                             title="Remove equipment entry"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1411,21 +1556,51 @@ export default function ToolsInventoryView({
                         </div>
                       </div>
 
+                      {/* 5-Day Reinstallation Due Warning Alert */}
+                      {dueInfo.isDueWithin5Days && item.officeStatus !== 'reinstalled' && (
+                        <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+                          dueInfo.isOverdue 
+                            ? 'bg-rose-50 border-rose-300 text-rose-900' 
+                            : 'bg-amber-50 border-amber-300 text-amber-900'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${dueInfo.isOverdue ? 'text-rose-600' : 'text-amber-600'}`} />
+                            <div className="text-xs">
+                              <span className="font-bold">
+                                {dueInfo.isOverdue ? '🚨 Reinstallation Overdue:' : '⚠️ Reinstallation Due in 5 Days:'}
+                              </span>
+                              <span className="ml-1.5 font-semibold">
+                                Target Date: {dueInfo.dueDateStr} ({dueInfo.label})
+                              </span>
+                            </div>
+                          </div>
+                          <a
+                            href={getBacklogWhatsAppUrl(item)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all whitespace-nowrap self-start sm:self-auto"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>WhatsApp Notify Tech to Reinstall</span>
+                          </a>
+                        </div>
+                      )}
+
                       {/* Equipment Details Card */}
-                      <div className="p-3 rounded-xl bg-gray-50 border border-gray-200/80 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div className="space-y-1">
+                      <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-0.5">
                           <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold block">
-                            Hardware & Serial
+                            Hardware
                           </span>
-                          <div className="font-bold text-gray-900 text-sm">{item.equipmentName}</div>
+                          <div className="font-bold text-gray-900 text-xs">{item.equipmentName}</div>
                           {item.serialNumber ? (
-                            <div className="font-mono text-gray-600 text-[11px]">S/N: {item.serialNumber}</div>
+                            <div className="font-mono text-gray-500 text-[11px]">S/N: {item.serialNumber}</div>
                           ) : (
-                            <div className="text-gray-400 text-[11px] italic">No serial number logged</div>
+                            <div className="text-gray-400 text-[11px] italic">No S/N</div>
                           )}
                         </div>
 
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold block">
                             Fault Observation
                           </span>
@@ -1434,20 +1609,25 @@ export default function ToolsInventoryView({
                           </p>
                           {item.serviceCenterRef && (
                             <div className="text-[10px] font-mono font-bold text-blue-700">
-                              Service Ref: {item.serviceCenterRef}
+                              Ref: {item.serviceCenterRef}
                             </div>
                           )}
                         </div>
 
-                        <div className="space-y-1 md:text-right">
+                        <div className="space-y-0.5 md:text-right">
                           <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold block">
-                            Dates & Assigned Lead
+                            Schedule & Lead
                           </span>
                           <div className="text-gray-600 text-[11px]">
-                            Brought to office: <span className="font-mono font-semibold text-gray-900">{item.dateBroughtBack}</span>
+                            Brought: <span className="font-mono font-semibold text-gray-900">{item.dateBroughtBack}</span>
+                          </div>
+                          <div className="text-gray-600 text-[11px]">
+                            Reinstall Due: <span className={`font-mono font-bold ${dueInfo.isDueWithin5Days && item.officeStatus !== 'reinstalled' ? (dueInfo.isOverdue ? 'text-rose-600' : 'text-amber-600') : 'text-gray-900'}`}>
+                              {dueInfo.dueDateStr}
+                            </span>
                           </div>
                           {item.engineer1 && (
-                            <div className="text-[11px] text-gray-700">
+                            <div className="text-[11px] text-gray-700 pt-0.5">
                               Lead: <strong className="text-gray-900">{item.engineer1}</strong>
                             </div>
                           )}
@@ -1455,72 +1635,54 @@ export default function ToolsInventoryView({
                       </div>
 
                       {/* Standby Device Row */}
-                      {item.hasTemporaryDevice ? (
-                        <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
-                          isStandbyActive
-                            ? 'bg-amber-50/70 border-amber-300'
-                            : 'bg-emerald-50/40 border-emerald-200'
-                        }`}>
+                      {item.hasTemporaryDevice && (
+                        <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-1.5 font-bold text-gray-900 text-[11px]">
-                              <HardDrive className={`w-3.5 h-3.5 ${isStandbyActive ? 'text-amber-600' : 'text-emerald-600'}`} />
-                              <span>Temporary Standby Device Installed at Site:</span>
-                            </div>
-                            <div className="text-[11px] text-gray-800">
-                              <span className="font-bold">{item.tempDeviceName || 'Standby Loaner'}</span>
+                              <HardDrive className="w-3.5 h-3.5 text-gray-500" />
+                              <span>Standby Unit: {item.tempDeviceName || 'Loaner Device'}</span>
                               {item.tempDeviceSerial && (
-                                <span className="font-mono text-gray-600 ml-1.5">({item.tempDeviceSerial})</span>
+                                <span className="font-mono text-gray-500">({item.tempDeviceSerial})</span>
                               )}
                               {item.tempDeviceDeployedDate && (
-                                <span className="text-gray-500 ml-2">Deployed on {item.tempDeviceDeployedDate}</span>
+                                <span className="text-gray-400 font-normal">&bull; Deployed {item.tempDeviceDeployedDate}</span>
                               )}
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {isStandbyActive ? (
-                              <>
-                                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
-                                  ⚠️ Active Standby on Site (Needs Recovery)
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRecoverStandbyInBacklog(item.ticketId, item.id)}
-                                  className="px-3 py-1.5 rounded-lg bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-xs border border-emerald-300 shadow-sm transition-all"
-                                  title="Click when repaired unit is reinstalled and standby unit is returned to office"
-                                >
-                                  ✓ Mark Standby Recovered to Office
-                                </button>
-                              </>
+                              <button
+                                type="button"
+                                onClick={() => handleRecoverStandbyInBacklog(item.ticketId, item.id)}
+                                className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer"
+                              >
+                                ✓ Mark Standby Recovered
+                              </button>
                             ) : (
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>Standby Recovered to Locker {item.tempDeviceRecoveryDate ? `(${item.tempDeviceRecoveryDate})` : ''}</span>
+                                <span>Recovered to Locker</span>
                               </span>
                             )}
                           </div>
-                        </div>
-                      ) : (
-                        <div className="text-[11px] text-gray-400 italic">
-                          No temporary standby device attached for this equipment.
                         </div>
                       )}
 
                       {/* Direct WhatsApp Action for Engineer */}
                       {item.engineer1 && (
-                        <div className="pt-1 flex items-center justify-between text-xs border-t border-gray-100">
+                        <div className="pt-1 flex items-center justify-between text-xs">
                           <span className="text-gray-500 text-[11px]">
-                            Assigned Lead: <strong className="text-gray-800">{item.engineer1}</strong> (+91 {getEngineerPhone(item.engineer1)})
+                            Assigned Lead: <strong className="text-gray-800">{item.engineer1}</strong>
                           </span>
                           <a
                             href={getBacklogWhatsAppUrl(item)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 hover:underline text-xs"
-                            title={`Send direct hardware directive to ${item.engineer1} on WhatsApp`}
+                            className="font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 hover:underline text-xs"
                           >
-                            <Send className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Notify {item.engineer1} on WhatsApp &rarr;</span>
+                            <Send className="w-3 h-3 text-emerald-600" />
+                            <span>Notify on WhatsApp &rarr;</span>
                           </a>
                         </div>
                       )}
@@ -1532,8 +1694,10 @@ export default function ToolsInventoryView({
             )}
           </div>
 
-        </div>
-      )}
+          </div>
+        )}
+
+      </div>
 
       {/* ======================================================== */}
       {/* MODAL 1: ISSUE COMPANY TOOL TO ENGINEER                  */}
@@ -1941,19 +2105,32 @@ export default function ToolsInventoryView({
 
                 <div>
                   <label className="text-gray-700 font-bold block mb-1">
-                    Office Handling Status *
+                    Target Reinstall Due Date (5-Day Alert) *
                   </label>
-                  <select
-                    value={backlogEquipmentForm.officeStatus}
-                    onChange={e => setBacklogEquipmentForm({ ...backlogEquipmentForm, officeStatus: e.target.value as any })}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
-                  >
-                    <option value="sitting_in_office">🔴 Sitting in Office (Backlog / Needs Action)</option>
-                    <option value="at_service_center">🟡 Sent to Service Center / Vendor RMA</option>
-                    <option value="ready_for_reinstall">🟢 Repaired / Replacement Arrived (Ready for Site)</option>
-                    <option value="reinstalled">✅ Reinstalled at Site (Closed)</option>
-                  </select>
+                  <input
+                    type="date"
+                    required
+                    value={backlogEquipmentForm.expectedReinstallDate}
+                    onChange={e => setBacklogEquipmentForm({ ...backlogEquipmentForm, expectedReinstallDate: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label className="text-gray-700 font-bold block mb-1">
+                  Office Handling Status *
+                </label>
+                <select
+                  value={backlogEquipmentForm.officeStatus}
+                  onChange={e => setBacklogEquipmentForm({ ...backlogEquipmentForm, officeStatus: e.target.value as any })}
+                  className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+                >
+                  <option value="sitting_in_office">🔴 Sitting in Office (Backlog / Needs Action)</option>
+                  <option value="at_service_center">🟡 Sent to Service Center / Vendor RMA</option>
+                  <option value="ready_for_reinstall">🟢 Repaired / Replacement Arrived (Ready for Site)</option>
+                  <option value="reinstalled">✅ Reinstalled at Site (Closed)</option>
+                </select>
               </div>
 
               {/* Service Center Ref & Notes */}

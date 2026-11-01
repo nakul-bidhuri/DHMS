@@ -35,9 +35,18 @@ import {
   Send,
   UserCheck,
   RotateCcw,
-  Trash2
+  Trash2,
+  Bell,
+  HardDrive
 } from 'lucide-react';
-import ToolsInventoryView, { ToolItem, INITIAL_TOOLS, STORAGE_KEY } from '@/components/ToolsInventoryView';
+import ToolsInventoryView, { 
+  ToolItem, 
+  SiteEquipmentItem, 
+  INITIAL_TOOLS, 
+  STORAGE_KEY, 
+  getReinstallDueInfo, 
+  getToolDueInfo 
+} from '@/components/ToolsInventoryView';
 import ToolsInventoryLogo from '@/components/ToolsInventoryLogo';
 import { 
   ROSTER_ENGINEERS, 
@@ -48,32 +57,10 @@ import {
   ADMIN_NAME 
 } from '@/lib/engineers';
 
-export { ROSTER_ENGINEERS, ENGINEERS_ROSTER, getEngineerPhone, ADMIN_PHONE, ADMIN_NAME };
-export const ENGINEER_PHONE = DEFAULT_ENGINEER_PHONE;
+// Engineers roster helpers
+const ENGINEER_PHONE = DEFAULT_ENGINEER_PHONE;
 
-export interface SiteEquipmentItem {
-  id: string;
-  ticketId?: string | number;
-  ticketNo?: string;
-  clientName?: string;
-  address?: string;
-  equipmentName: string;
-  serialNumber?: string;
-  actionNeeded: 'repair' | 'replace';
-  faultDescription: string;
-  dateBroughtBack: string;
-  officeStatus: 'sitting_in_office' | 'at_service_center' | 'ready_for_reinstall' | 'reinstalled';
-  serviceCenterRef?: string;
-  notes?: string;
-  hasTemporaryDevice: boolean;
-  tempDeviceName?: string;
-  tempDeviceSerial?: string;
-  tempDeviceDeployedDate?: string;
-  tempDeviceRecoveryStatus: 'deployed' | 'recovered';
-  tempDeviceRecoveryDate?: string;
-}
-
-export interface ComplaintItem {
+interface ComplaintItem {
   id: number | string;
   date?: string;
   complaintType?: string;
@@ -602,6 +589,7 @@ export default function AdminPage() {
     actionNeeded: 'repair' | 'replace';
     faultDescription: string;
     dateBroughtBack: string;
+    expectedReinstallDate: string;
     officeStatus: 'sitting_in_office' | 'at_service_center' | 'ready_for_reinstall' | 'reinstalled';
     serviceCenterRef: string;
     notes: string;
@@ -616,6 +604,7 @@ export default function AdminPage() {
     actionNeeded: 'repair',
     faultDescription: '',
     dateBroughtBack: new Date().toISOString().split('T')[0],
+    expectedReinstallDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
     officeStatus: 'sitting_in_office',
     serviceCenterRef: '',
     notes: '',
@@ -625,6 +614,173 @@ export default function AdminPage() {
     tempDeviceDeployedDate: new Date().toISOString().split('T')[0],
     tempDeviceRecoveryStatus: 'deployed'
   });
+
+  // --- ADMIN NOTIFICATION CENTER STATE & ALERTS (5-DAY DUE WARNINGS) ---
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [notificationCenterTab, setNotificationCenterTab] = useState<'all' | 'reinstall' | 'tools' | 'standby'>('all');
+
+  // Reinstallation alerts (due within 5 days or overdue)
+  const reinstallAlerts = useMemo(() => {
+    const list: Array<{ eq: SiteEquipmentItem; ticket: ComplaintItem; dueInfo: ReturnType<typeof getReinstallDueInfo> }> = [];
+    complaints.forEach(t => {
+      if (Array.isArray(t.siteEquipments)) {
+        t.siteEquipments.forEach((eq: SiteEquipmentItem) => {
+          if (eq.officeStatus !== 'reinstalled') {
+            const dueInfo = getReinstallDueInfo(eq);
+            if (dueInfo.isDueWithin5Days) {
+              list.push({ eq, ticket: t, dueInfo });
+            }
+          }
+        });
+      }
+    });
+    return list;
+  }, [complaints]);
+
+  // Tool return alerts (due within 5 days or overdue)
+  const toolAlerts = useMemo(() => {
+    const list: Array<{ tool: ToolItem; dueInfo: ReturnType<typeof getToolDueInfo> }> = [];
+    tools.forEach(tool => {
+      if (tool.status !== 'Returned') {
+        const dueInfo = getToolDueInfo(tool);
+        if (dueInfo.isDueWithin5Days || tool.status === 'Overdue') {
+          list.push({ tool, dueInfo });
+        }
+      }
+    });
+    return list;
+  }, [tools]);
+
+  // Standby units deployed on site alerts
+  const standbyAlerts = useMemo(() => {
+    const list: Array<{ eq: SiteEquipmentItem; ticket: ComplaintItem }> = [];
+    complaints.forEach(t => {
+      if (Array.isArray(t.siteEquipments)) {
+        t.siteEquipments.forEach((eq: SiteEquipmentItem) => {
+          if (eq.hasTemporaryDevice && eq.tempDeviceRecoveryStatus === 'deployed') {
+            list.push({ eq, ticket: t });
+          }
+        });
+      }
+    });
+    return list;
+  }, [complaints]);
+
+  const totalAlertsCount = reinstallAlerts.length + toolAlerts.length + standbyAlerts.length;
+
+  const buildReinstallAlertWhatsAppUrl = (eq: SiteEquipmentItem, ticket: ComplaintItem) => {
+    const eng = eq.engineer1 || ticket.engineer1 || 'Lead Engineer';
+    const phone = getEngineerPhone(eng);
+    const dueInfo = getReinstallDueInfo(eq);
+    const lines = [
+      `*========================================*`,
+      `*DIGITECH SERVICES | HARDWARE REINSTALL ALERT*`,
+      `*========================================*`,
+      ``,
+      `*Attention:* ${eng}`,
+      `*Ticket ID:* ${eq.ticketNo || ticket.ticketNo}`,
+      `*Client:* ${eq.clientName || ticket.clientName}`,
+      `*Site Address:* ${eq.address || ticket.address}`,
+      ``,
+      `*-- [HARDWARE DUE FOR REINSTALLATION] --*`,
+      `*Device:* ${eq.equipmentName}`,
+      eq.serialNumber ? `*Serial No:* ${eq.serialNumber}` : '',
+      `*Office Status:* ${eq.officeStatus.toUpperCase().replace(/_/g, ' ')}`,
+      dueInfo.dueDateStr ? `*Target Due Date:* ${dueInfo.dueDateStr} *[${dueInfo.label.toUpperCase()}]*` : '',
+      eq.serviceCenterRef ? `*Service Ref:* ${eq.serviceCenterRef}` : '',
+      ``,
+      eq.hasTemporaryDevice ? [
+        `*-- [STANDBY LOANER AT SITE] --*`,
+        `*Temporary Device:* ${eq.tempDeviceName || 'Loaner Unit'}`,
+        eq.tempDeviceSerial ? `*Standby S/N:* ${eq.tempDeviceSerial}` : '',
+        `*Action:* RECOVER this standby unit back to office locker upon reinstallation!`
+      ].filter(Boolean).join('\n') : '',
+      ``,
+      `*-- [DIRECTIVE] --*`,
+      `>> 5-DAY REINSTALL ALERT: Hardware is due for site reinstallation ${dueInfo.daysLeft <= 0 ? 'NOW (OVERDUE)' : `in ${dueInfo.daysLeft} days`} (${dueInfo.dueDateStr}).`,
+      `>> Please collect customer hardware from office and complete the site reinstallation & loaner recovery.`,
+      ``,
+      `*========================================*`,
+      `*DIGITECH HMS DISPATCH DESK*`,
+      `*========================================*`
+    ].filter(Boolean);
+    return `https://wa.me/91${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
+  };
+
+  const buildToolAlertWhatsAppUrl = (tool: ToolItem) => {
+    const phone = getEngineerPhone(tool.assignedEngineer);
+    const dueInfo = getToolDueInfo(tool);
+    const lines = [
+      `*========================================*`,
+      `*DIGITECH SERVICES | TOOL RETURN NOTICE*`,
+      `*========================================*`,
+      ``,
+      `*Attention:* ${tool.assignedEngineer}`,
+      `*Asset Tag:* [${tool.assetTag}]`,
+      `*Tool Name:* ${tool.toolName}`,
+      `*Category:* ${tool.category}`,
+      `*Return Due Date:* ${tool.expectedReturnDate} *[${dueInfo.label.toUpperCase()}]*`,
+      tool.linkedTicket ? `*Linked Ticket:* ${tool.linkedTicket}` : '',
+      ``,
+      `*-- [DIRECTIVE] --*`,
+      `>> Please return this company equipment to the Digitech tool locker.`,
+      `>> If needed on site for ongoing work, please report request for extension.`,
+      ``,
+      `*========================================*`,
+      `*DIGITECH HMS ASSET MANAGEMENT*`,
+      `*========================================*`
+    ].filter(Boolean);
+    return `https://wa.me/91${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
+  };
+
+  const handleQuickMarkReinstalled = async (ticketId: string | number, eqId: string) => {
+    const target = complaints.find(c => c.id === ticketId);
+    if (!target) return;
+    const current = target.siteEquipments || [];
+    const updated = current.map((eq: SiteEquipmentItem) =>
+      eq.id === eqId ? { ...eq, officeStatus: 'reinstalled' as const } : eq
+    );
+    const updatedTicket = { ...target, siteEquipments: updated };
+    setComplaints(prev => prev.map(c => c.id === ticketId ? updatedTicket : c));
+    try {
+      await fetch(`/api/complaints/${ticketId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTicket)
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleQuickMarkReturned = (toolId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const updated = tools.map(item =>
+      item.id === toolId ? { ...item, status: 'Returned' as const, returnDate: today } : item
+    );
+    handleUpdateTools(updated);
+  };
+
+  const handleQuickRecoverStandby = async (ticketId: string | number, eqId: string) => {
+    const target = complaints.find(c => c.id === ticketId);
+    if (!target) return;
+    const current = target.siteEquipments || [];
+    const today = new Date().toISOString().split('T')[0];
+    const updated = current.map((eq: SiteEquipmentItem) =>
+      eq.id === eqId ? { ...eq, tempDeviceRecoveryStatus: 'recovered' as const, tempDeviceRecoveryDate: today } : eq
+    );
+    const updatedTicket = { ...target, siteEquipments: updated };
+    setComplaints(prev => prev.map(c => c.id === ticketId ? updatedTicket : c));
+    try {
+      await fetch(`/api/complaints/${ticketId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTicket)
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleSaveEquipment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1182,6 +1338,22 @@ export default function AdminPage() {
               </div>
             </button>
 
+            {/* Alerts & Notifications (Admin Notification Center) */}
+            <button
+              onClick={() => setIsNotificationCenterOpen(true)}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium transition-colors text-gray-300 hover:bg-white/5 hover:text-white cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <Bell className="w-4 h-4 text-rose-400" />
+                <span>Alerts & Due Notices</span>
+              </div>
+              {totalAlertsCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-rose-600 text-white animate-pulse">
+                  {totalAlertsCount}
+                </span>
+              )}
+            </button>
+
             <a
               href="/support"
               target="_blank"
@@ -1233,7 +1405,9 @@ export default function AdminPage() {
           onSaveComplaint={saveComplaint}
           tools={tools}
           onUpdateTools={handleUpdateTools}
-          initialTab="backlog"
+          initialTab="all"
+          totalAlertsCount={totalAlertsCount}
+          onOpenNotifications={() => setIsNotificationCenterOpen(true)}
         />
       ) : activeNav === 'overview' ? (
         <div className="flex-1 flex flex-col bg-[#f4f7f9] overflow-y-auto font-sans">
@@ -1259,6 +1433,19 @@ export default function AdminPage() {
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>Dispatch Desk Online</span>
               </div>
+              <button
+                onClick={() => setIsNotificationCenterOpen(true)}
+                className="px-3.5 py-1.5 rounded-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Open Due Alerts & Notification Center"
+              >
+                <Bell className="w-3.5 h-3.5 text-rose-600" />
+                <span className="hidden sm:inline">Alerts</span>
+                {totalAlertsCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-rose-600 text-white leading-none">
+                    {totalAlertsCount}
+                  </span>
+                )}
+              </button>
               <button
                 onClick={() => fetchComplaints(true)}
                 disabled={isRefreshing}
@@ -2305,48 +2492,39 @@ export default function AdminPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                       
                       {/* CARD 1: ENGINEER 01 (MAIN WORKER - LEAD) */}
-                      <div className={`p-4 rounded-xl border transition-all ${
-                        selectedTicket.engineer1Status === 'quitted'
-                          ? 'border-red-200 bg-red-50/50'
-                          : selectedTicket.engineer1
-                          ? 'border-emerald-200 bg-emerald-50/20'
-                          : 'border-gray-200 bg-gray-50/50'
-                      }`}>
-                        <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-200/70">
+                      <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-xs space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
                           <div className="flex items-center gap-2">
                             <UserCheck className="w-4 h-4 text-emerald-600" />
-                            <div>
-                              <span className="font-bold text-xs text-gray-800">
-                                Engineer 01 (Main Worker)
-                              </span>
-                              <span className="text-[10px] text-gray-400 block">Primary Project Lead</span>
-                            </div>
+                            <span className="font-bold text-xs text-gray-900">
+                              Main Engineer (Lead)
+                            </span>
                           </div>
 
                           {selectedTicket.engineer1Status === 'quitted' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-300">
-                              ❌ Denied / Quitted Task
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                              ❌ Quitted Task
                             </span>
                           ) : selectedTicket.engineer1 ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">
-                              🟢 Main Lead
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              🟢 Active Lead
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
-                              ⚪ Unassigned
+                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+                              Unassigned
                             </span>
                           )}
                         </div>
 
-                        <div className="space-y-3 text-xs">
+                        <div className="space-y-2.5 text-xs">
                           <div>
                             <label className="text-gray-500 text-[11px] mb-1 block">
-                              Select Main Engineer
+                              Assigned Engineer
                             </label>
                             <select
                               value={selectedTicket.engineer1 || ''}
                               onChange={e => updateComplaint(selectedTicket.id, 'engineer1', e.target.value)}
-                              className="w-full border border-gray-300 rounded-lg p-2 text-xs bg-white text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-rose-500"
+                              className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-rose-500"
                             >
                               <option value="">Select Main Worker</option>
                               {ROSTER_ENGINEERS.map(eng => (
@@ -2355,8 +2533,8 @@ export default function AdminPage() {
                             </select>
                           </div>
 
-                          <div className="p-2 rounded-lg bg-white border border-gray-200 flex items-center justify-between text-[11px]">
-                            <span className="text-gray-500">Direct WhatsApp Line:</span>
+                          <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-between text-[11px]">
+                            <span className="text-gray-500">Contact:</span>
                             <span className="font-mono font-bold text-emerald-700">
                               +91 {getEngineerPhone(selectedTicket.engineer1)}
                             </span>
@@ -2364,17 +2542,17 @@ export default function AdminPage() {
 
                           {/* Quitted Notice if Engineer 1 has quitted */}
                           {selectedTicket.engineer1Status === 'quitted' && (
-                            <div className="p-2.5 rounded-lg bg-red-100/70 border border-red-200 text-red-900 text-[11px] space-y-1">
+                            <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-900 text-[11px] space-y-1">
                               <div className="font-bold flex items-center gap-1">
                                 <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
-                                <span>Main Worker Quit Recorded:</span>
+                                <span>Worker Quit:</span>
                               </div>
                               <p className="italic text-red-800">
-                                &ldquo;{selectedTicket.engineer1QuitReason || 'Worker denied / unable to solve on site.'}&rdquo;
+                                &ldquo;{selectedTicket.engineer1QuitReason || 'Worker denied / unable to solve.'}&rdquo;
                               </p>
                               {selectedTicket.roundRobinEngineer && (
                                 <div className="text-[10px] text-red-700 font-medium">
-                                  Reassigned via Round-Robin to: <strong>{selectedTicket.roundRobinEngineer}</strong>
+                                  Reassigned to: <strong>{selectedTicket.roundRobinEngineer}</strong>
                                 </div>
                               )}
                             </div>
@@ -2386,27 +2564,25 @@ export default function AdminPage() {
                               href={buildEngineer1WhatsAppUrl(selectedTicket)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
-                              title={`Notify ${selectedTicket.engineer1} on WhatsApp (+91 ${getEngineerPhone(selectedTicket.engineer1)})`}
+                              className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
                             >
                               <svg className="w-3.5 h-3.5 fill-current flex-shrink-0" viewBox="0 0 24 24">
                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
                               </svg>
-                              <span>Notify Main Worker on WhatsApp</span>
+                              <span>Notify on WhatsApp</span>
                             </a>
                           )}
 
                           {/* Action Button: Quit / Round-Robin Reassignment */}
-                          <div className="pt-1">
+                          <div>
                             {selectedTicket.engineer1 && selectedTicket.engineer1Status !== 'quitted' && (
                               <button
                                 type="button"
                                 onClick={() => setQuitModalEng1({ isOpen: true, ticket: selectedTicket, reason: '' })}
-                                className="w-full py-2 px-3 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
-                                title="Click if Engineer 1 denies or quits -> Automatically assigns new worker via Round-Robin"
+                                className="w-full py-1.5 px-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium text-xs flex items-center justify-center gap-1.5 transition-all"
                               >
-                                <ArrowRightLeft className="w-3.5 h-3.5 text-amber-600" />
-                                <span>Main Worker Denies / Quits Task</span>
+                                <ArrowRightLeft className="w-3.5 h-3.5 text-gray-500" />
+                                <span>Worker Denies / Quits Task</span>
                               </button>
                             )}
 
@@ -2420,7 +2596,7 @@ export default function AdminPage() {
                                 }}
                                 className="py-1 px-2.5 rounded text-[10px] text-gray-500 hover:text-gray-800 underline"
                               >
-                                Reset Main Worker Status
+                                Reset Worker Status
                               </button>
                             )}
                           </div>
@@ -2428,42 +2604,35 @@ export default function AdminPage() {
                       </div>
 
                       {/* CARD 2: ENGINEER 02 (HELPER / ASSISTANT WORKER) */}
-                      <div className={`p-4 rounded-xl border transition-all ${
-                        selectedTicket.engineer2
-                          ? 'border-blue-200 bg-blue-50/20'
-                          : 'border-gray-200 bg-gray-50/50'
-                      }`}>
-                        <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-200/70">
+                      <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-xs space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
                           <div className="flex items-center gap-2">
                             <RotateCw className="w-4 h-4 text-blue-600" />
-                            <div>
-                              <span className="font-bold text-xs text-gray-800">
-                                Engineer 02 (Helper Worker)
-                              </span>
-                              <span className="text-[10px] text-gray-400 block">Assistant to Main Worker</span>
-                            </div>
+                            <span className="font-bold text-xs text-gray-900">
+                              Helper Engineer
+                            </span>
                           </div>
 
                           {selectedTicket.engineer2 ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-300">
-                              🤝 Helper Assigned
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                              🤝 Assigned
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">
-                              Optional Helper
+                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500">
+                              None
                             </span>
                           )}
                         </div>
 
-                        <div className="space-y-3 text-xs">
+                        <div className="space-y-2.5 text-xs">
                           <div>
                             <label className="text-gray-500 text-[11px] mb-1 block">
-                              Select Helper Engineer
+                              Assigned Helper
                             </label>
                             <select
                               value={selectedTicket.engineer2 || ''}
                               onChange={e => updateComplaint(selectedTicket.id, 'engineer2', e.target.value)}
-                              className="w-full border border-gray-300 rounded-lg p-2 text-xs bg-white text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-rose-500"
+                              className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-rose-500"
                             >
                               <option value="">No Helper Assigned</option>
                               {ROSTER_ENGINEERS.map(eng => (
@@ -2472,15 +2641,11 @@ export default function AdminPage() {
                             </select>
                           </div>
 
-                          <div className="p-2 rounded-lg bg-white border border-gray-200 flex items-center justify-between text-[11px]">
-                            <span className="text-gray-500">Direct WhatsApp Line:</span>
+                          <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-between text-[11px]">
+                            <span className="text-gray-500">Contact:</span>
                             <span className="font-mono font-bold text-blue-700">
                               +91 {getEngineerPhone(selectedTicket.engineer2)}
                             </span>
-                          </div>
-
-                          <div className="p-2.5 rounded-lg bg-blue-50/60 border border-blue-100 text-blue-800 text-[11px]">
-                            🤝 Engineer 2 assists Engineer 1 on site. Use the dispatch button below to notify him on WhatsApp.
                           </div>
 
                           {/* Dedicated WhatsApp Escalate / Dispatch Button for Engineer 2 */}
@@ -2489,8 +2654,7 @@ export default function AdminPage() {
                               href={buildEngineer2WhatsAppUrl(selectedTicket)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
-                              title={`Notify Helper ${selectedTicket.engineer2} on WhatsApp (+91 ${getEngineerPhone(selectedTicket.engineer2)})`}
+                              className="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
                             >
                               <svg className="w-3.5 h-3.5 fill-current flex-shrink-0" viewBox="0 0 24 24">
                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
@@ -2505,41 +2669,34 @@ export default function AdminPage() {
 
                     {/* CARD 3: DYNAMIC ROUND-ROBIN REPLACEMENT WORKER (Appears when Engineer 1 has quitted) */}
                     {selectedTicket.roundRobinEngineer && (
-                      <div className={`p-4 rounded-xl border transition-all ${
-                        selectedTicket.roundRobinStatus === 'quitted'
-                          ? 'border-red-300 bg-red-50/80 ring-1 ring-red-400'
-                          : 'border-emerald-300 bg-emerald-50/40'
-                      }`}>
-                        <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-200">
+                      <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-xs space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
                           <div className="flex items-center gap-2">
                             <RotateCw className="w-4 h-4 text-emerald-600" />
-                            <div>
-                              <span className="font-bold text-xs text-gray-900">
-                                Round-Robin Assigned Worker: {selectedTicket.roundRobinEngineer}
-                              </span>
-                              <span className="text-[10px] text-gray-500 block">Managing the whole work</span>
-                            </div>
+                            <span className="font-bold text-xs text-gray-900">
+                              Replacement Lead: {selectedTicket.roundRobinEngineer}
+                            </span>
                           </div>
 
                           {selectedTicket.roundRobinStatus === 'quitted' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-300">
-                              ❌ Also Quitted &bull; Admin Escalated
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                              ❌ Quitted &bull; Escalated
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              🟢 Active Managing Worker
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              🟢 Active Replacement
                             </span>
                           )}
                         </div>
 
-                        <div className="space-y-3 text-xs">
-                          <div className="p-2.5 rounded-lg bg-white border border-gray-200 flex items-center justify-between text-xs">
+                        <div className="space-y-2.5 text-xs">
+                          <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-between text-xs">
                             <div>
-                              <span className="text-gray-500 text-[11px] block">Assigned Lead via Round-Robin:</span>
-                              <strong className="text-gray-900 font-bold text-sm">{selectedTicket.roundRobinEngineer}</strong>
+                              <span className="text-gray-500 text-[11px] block">Assigned Lead (Round-Robin):</span>
+                              <strong className="text-gray-900 font-bold">{selectedTicket.roundRobinEngineer}</strong>
                             </div>
                             <div className="text-right">
-                              <span className="text-gray-500 text-[11px] block">Direct Line:</span>
+                              <span className="text-gray-500 text-[11px] block">Contact:</span>
                               <span className="font-mono font-bold text-emerald-700">
                                 +91 {getEngineerPhone(selectedTicket.roundRobinEngineer)}
                               </span>
@@ -2552,52 +2709,43 @@ export default function AdminPage() {
                               href={buildRoundRobinWhatsAppUrl(selectedTicket)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="w-full py-2 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
-                              title={`Notify replacement lead ${selectedTicket.roundRobinEngineer} via WhatsApp (+91 ${getEngineerPhone(selectedTicket.roundRobinEngineer)})`}
+                              className="w-full py-2 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
                             >
                               <svg className="w-3.5 h-3.5 fill-current flex-shrink-0" viewBox="0 0 24 24">
                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
                               </svg>
-                              <span>Notify Replacement Worker (+91 {getEngineerPhone(selectedTicket.roundRobinEngineer)})</span>
+                              <span>Notify Replacement on WhatsApp</span>
                             </a>
                           )}
 
                           {selectedTicket.roundRobinStatus === 'quitted' ? (
-                            <div className="p-2.5 rounded-lg bg-red-100 border border-red-300 text-red-900 text-[11px] space-y-2">
+                            <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-900 text-[11px] space-y-2">
                               <div className="font-bold flex items-center gap-1">
                                 <AlertOctagon className="w-3.5 h-3.5 text-red-600" />
-                                <span>Replacement Worker Also Quitted:</span>
+                                <span>Replacement Quitted:</span>
                               </div>
                               <p className="italic text-red-800">
-                                &ldquo;{selectedTicket.roundRobinQuitReason || 'Technical blocker encountered.'}&rdquo;
+                                &ldquo;{selectedTicket.roundRobinQuitReason || 'Technical blocker.'}&rdquo;
                               </p>
-                              <div className="text-[10px] font-bold text-red-700 uppercase">
-                                ⚠️ Task fully escalated to Admin (P1 Critical Priority).
-                              </div>
                               <a
                                 href={buildAdminEscalationWhatsAppUrl(selectedTicket)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-full py-2 px-3 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
-                                title="Escalate directly to Admin Vineet Mishra on WhatsApp (+91 9999760222)"
+                                className="w-full py-1.5 px-3 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
                               >
                                 <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" />
-                                <span>🚨 Escalate to Admin Vineet Mishra (+91 9999760222)</span>
+                                <span>Escalate to Admin Vineet (+91 9999760222)</span>
                               </a>
                             </div>
                           ) : (
-                            <div className="flex items-center justify-between pt-1">
-                              <span className="text-[11px] text-gray-500">
-                                Managing whole project after Engineer 1 quit.
-                              </span>
+                            <div className="flex justify-end pt-1">
                               <button
                                 type="button"
                                 onClick={() => setQuitModalEng2({ isOpen: true, ticket: selectedTicket, reason: '' })}
-                                className="py-1.5 px-3 rounded-lg border border-red-300 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
-                                title="Click if Replacement Worker also denies/quits -> Escalates to Admin"
+                                className="py-1 px-2.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-medium text-xs flex items-center gap-1.5 transition-all"
                               >
                                 <UserX className="w-3.5 h-3.5 text-red-600" />
-                                <span>Replacement Worker Quits &rarr; Escalate to Admin</span>
+                                <span>Replacement Quits &rarr; Escalate to Admin</span>
                               </button>
                             </div>
                           )}
@@ -2681,25 +2829,16 @@ export default function AdminPage() {
                     </div>
 
                     {/* SECTION: SITE EQUIPMENT BROUGHT BACK FOR REPAIR / REPLACEMENT & STANDBY TRACKER */}
-                    <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/40 space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-200">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
-                            <RotateCcw className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-xs font-bold text-gray-900">
-                                Site Equipment & Standby Loaner Log
-                              </h4>
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-bold">
-                                {(selectedTicket.siteEquipments || []).length} logged
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-gray-500">
-                              Log faulty material brought to office for repair/replacement + temporary standby devices attached at site
-                            </p>
-                          </div>
+                    <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-xs space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-gray-100">
+                        <div className="flex items-center gap-2">
+                          <RotateCcw className="w-4 h-4 text-amber-600" />
+                          <h4 className="text-xs font-bold text-gray-900">
+                            Site Equipment & Standby Log
+                          </h4>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-bold">
+                            {(selectedTicket.siteEquipments || []).length}
+                          </span>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -2713,6 +2852,7 @@ export default function AdminPage() {
                                 actionNeeded: 'repair',
                                 faultDescription: '',
                                 dateBroughtBack: new Date().toISOString().split('T')[0],
+                                expectedReinstallDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
                                 officeStatus: 'sitting_in_office',
                                 serviceCenterRef: '',
                                 notes: '',
@@ -2724,57 +2864,50 @@ export default function AdminPage() {
                               });
                               setIsEquipmentModalOpen(true);
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                            <span>+ Log Equipment Brought from Site</span>
+                            <span>+ Log Site Equipment</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => setActiveNav('tools')}
-                            className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                            className="px-2 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
                             title="Open full Equipment Repair & Replacement Backlog in Tools Hub"
                           >
-                            <span>Backlog Hub</span>
-                            <ExternalLink className="w-3 h-3 text-amber-800" />
+                            <span>Backlog</span>
+                            <ExternalLink className="w-3 h-3 text-gray-500" />
                           </button>
                         </div>
                       </div>
 
                       {/* Equipment List for this ticket */}
                       {(!selectedTicket.siteEquipments || selectedTicket.siteEquipments.length === 0) ? (
-                        <div className="p-4 rounded-lg bg-white border border-dashed border-amber-200 text-center space-y-1">
-                          <p className="text-xs font-semibold text-gray-700">No faulty equipment logged from this site yet</p>
-                          <p className="text-[11px] text-gray-400">
-                            If hardware was removed for bench repair or warranty replacement, click &quot;+ Log Equipment Brought from Site&quot; to track office handling and ensure the loaner unit isn&apos;t forgotten.
-                          </p>
+                        <div className="py-4 px-3 rounded-lg bg-gray-50 border border-gray-100 text-center text-xs text-gray-500">
+                          No site equipment logged for this ticket.
                         </div>
                       ) : (
-                        <div className="space-y-2.5">
-                          {selectedTicket.siteEquipments.map((eq) => (
+                        <div className="space-y-2">
+                          {selectedTicket.siteEquipments.map((eq) => {
+                            const dueInfo = getReinstallDueInfo(eq);
+                            return (
                             <div 
                               key={eq.id} 
-                              className={`p-3.5 rounded-xl border bg-white shadow-sm space-y-2.5 transition-all ${
-                                eq.officeStatus === 'sitting_in_office' 
-                                  ? 'border-red-300 ring-1 ring-red-200' 
-                                  : eq.officeStatus === 'ready_for_reinstall'
-                                  ? 'border-emerald-300 ring-1 ring-emerald-200'
-                                  : 'border-gray-200'
-                              }`}
+                              className="p-3 rounded-xl border border-gray-200 bg-white shadow-xs space-y-2 hover:border-gray-300 transition-colors"
                             >
                               {/* Row 1: Badges, Title, Status & Actions */}
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   {eq.actionNeeded === 'repair' ? (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
                                       <Wrench className="w-3 h-3 text-amber-700" />
-                                      <span>Needs Repair</span>
+                                      <span>Repair</span>
                                     </span>
                                   ) : (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300 flex items-center gap-1">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200 flex items-center gap-1">
                                       <RotateCw className="w-3 h-3 text-purple-700" />
-                                      <span>Needs Replacement</span>
+                                      <span>Replace</span>
                                     </span>
                                   )}
 
@@ -2782,31 +2915,30 @@ export default function AdminPage() {
                                     {eq.equipmentName}
                                   </span>
                                   {eq.serialNumber && (
-                                    <span className="text-[10px] font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                                    <span className="text-[10px] font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
                                       S/N: {eq.serialNumber}
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <label className="text-[10px] text-gray-500 font-medium">Office Status:</label>
                                   <select
                                     value={eq.officeStatus}
                                     onChange={(e) => handleUpdateSiteEquipmentStatus(selectedTicket.id, eq.id, e.target.value as any)}
-                                    className={`text-[11px] font-bold rounded-lg px-2.5 py-1 border focus:outline-none ${
+                                    className={`text-xs font-bold rounded-lg px-2.5 py-1 border focus:outline-none ${
                                       eq.officeStatus === 'sitting_in_office'
-                                        ? 'bg-red-50 text-red-800 border-red-300'
+                                        ? 'bg-red-50 text-red-800 border-red-200'
                                         : eq.officeStatus === 'at_service_center'
-                                        ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                        ? 'bg-amber-50 text-amber-800 border-amber-200'
                                         : eq.officeStatus === 'ready_for_reinstall'
-                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                        : 'bg-gray-100 text-gray-700 border-gray-300'
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                        : 'bg-gray-100 text-gray-700 border-gray-200'
                                     }`}
                                   >
-                                    <option value="sitting_in_office">🔴 Sitting in Office (Backlog / Needs Action)</option>
-                                    <option value="at_service_center">🟡 Sent to Service Center / Vendor RMA</option>
-                                    <option value="ready_for_reinstall">🟢 Repaired / Replacement Arrived (Ready for Site)</option>
-                                    <option value="reinstalled">✅ Reinstalled at Site (Closed)</option>
+                                    <option value="sitting_in_office">🔴 In Office (Needs Action)</option>
+                                    <option value="at_service_center">🟡 At Service Center (RMA)</option>
+                                    <option value="ready_for_reinstall">🟢 Ready for Site</option>
+                                    <option value="reinstalled">✅ Reinstalled at Site</option>
                                   </select>
 
                                   <button
@@ -2819,6 +2951,7 @@ export default function AdminPage() {
                                         actionNeeded: eq.actionNeeded,
                                         faultDescription: eq.faultDescription,
                                         dateBroughtBack: eq.dateBroughtBack,
+                                        expectedReinstallDate: eq.expectedReinstallDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
                                         officeStatus: eq.officeStatus,
                                         serviceCenterRef: eq.serviceCenterRef || '',
                                         notes: eq.notes || '',
@@ -2831,7 +2964,7 @@ export default function AdminPage() {
                                       setIsEquipmentModalOpen(true);
                                     }}
                                     className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                                    title="Edit Equipment Details"
+                                    title="Edit Details"
                                   >
                                     <Wrench className="w-3.5 h-3.5" />
                                   </button>
@@ -2840,74 +2973,86 @@ export default function AdminPage() {
                                     type="button"
                                     onClick={() => handleDeleteSiteEquipment(selectedTicket.id, eq.id)}
                                     className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                    title="Delete Equipment Record"
+                                    title="Delete Record"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               </div>
 
+                              {/* 5-Day Warning Alert Banner if Reinstall Due */}
+                              {dueInfo.isDueWithin5Days && eq.officeStatus !== 'reinstalled' && (
+                                <div className={`p-2.5 rounded-lg border text-xs flex items-center justify-between gap-2 ${
+                                  dueInfo.isOverdue ? 'bg-rose-50 border-rose-200 text-rose-900' : 'bg-amber-50 border-amber-200 text-amber-900'
+                                }`}>
+                                  <div className="flex items-center gap-1.5 font-bold">
+                                    <AlertTriangle className={`w-3.5 h-3.5 flex-shrink-0 ${dueInfo.isOverdue ? 'text-rose-600' : 'text-amber-600'}`} />
+                                    <span>{dueInfo.isOverdue ? '🚨 Reinstall Overdue:' : '⚠️ Reinstall Due Within 5 Days:'} {dueInfo.dueDateStr} ({dueInfo.label})</span>
+                                  </div>
+                                  <a
+                                    href={buildEquipmentWhatsAppUrl(selectedTicket, eq)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs transition-all"
+                                  >
+                                    <Send className="w-3 h-3" />
+                                    <span>WhatsApp Alert</span>
+                                  </a>
+                                </div>
+                              )}
+
                               {/* Row 2: Fault and dates */}
                               <div className="text-xs text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-gray-100">
                                 <div>
-                                  <span className="text-[10px] text-gray-400 block font-medium">Fault / Issue Observation:</span>
-                                  <p className="text-gray-800 text-[11px] font-medium">{eq.faultDescription || 'No detailed issue logged'}</p>
+                                  <span className="text-[10px] text-gray-400 block font-medium">Fault / Issue:</span>
+                                  <p className="text-gray-800 text-[11px] font-medium">{eq.faultDescription || 'No description logged'}</p>
                                 </div>
                                 <div className="sm:text-right">
-                                  <span className="text-[10px] text-gray-400 block font-medium">Date Brought Back to Office:</span>
-                                  <span className="text-gray-700 text-[11px] font-mono font-semibold">{eq.dateBroughtBack}</span>
+                                  <span className="text-[10px] text-gray-400 block font-medium">Brought Back:</span>
+                                  <span className="text-gray-700 text-[11px] font-mono">{eq.dateBroughtBack}</span>
                                   {eq.serviceCenterRef && (
-                                    <div className="text-[10px] text-blue-700 font-mono font-bold">
-                                      Service/RMA Ref: {eq.serviceCenterRef}
-                                    </div>
+                                    <span className="text-[10px] text-blue-700 font-mono font-bold ml-2">
+                                      Ref: {eq.serviceCenterRef}
+                                    </span>
                                   )}
                                 </div>
                               </div>
 
                               {/* Row 3: Temporary Standby Device Block */}
                               {eq.hasTemporaryDevice && (
-                                <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                  <div className="space-y-0.5">
-                                    <div className="flex items-center gap-1.5 font-bold text-amber-950 text-[11px]">
-                                      <RotateCw className="w-3.5 h-3.5 text-amber-700" />
-                                      <span>Temporary Standby Device Installed at Site:</span>
-                                    </div>
-                                    <div className="text-[11px] text-gray-800">
-                                      <span className="font-semibold">{eq.tempDeviceName || 'Loaner Unit'}</span>
-                                      {eq.tempDeviceSerial && (
-                                        <span className="font-mono text-gray-600 ml-1.5">({eq.tempDeviceSerial})</span>
-                                      )}
-                                      {eq.tempDeviceDeployedDate && (
-                                        <span className="text-[10px] text-gray-500 ml-2">Deployed on {eq.tempDeviceDeployedDate}</span>
-                                      )}
-                                    </div>
+                                <div className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <div className="space-y-0.5 text-[11px]">
+                                    <span className="font-semibold text-gray-900">
+                                      Standby Unit: {eq.tempDeviceName || 'Loaner Unit'}
+                                    </span>
+                                    {eq.tempDeviceSerial && (
+                                      <span className="font-mono text-gray-500 ml-1.5">({eq.tempDeviceSerial})</span>
+                                    )}
+                                    {eq.tempDeviceDeployedDate && (
+                                      <span className="text-gray-400 ml-2">&bull; Deployed {eq.tempDeviceDeployedDate}</span>
+                                    )}
                                   </div>
 
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     {eq.tempDeviceRecoveryStatus === 'deployed' ? (
-                                      <>
-                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
-                                          ⚠️ Standby on Site (Needs Recovery)
-                                        </span>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRecoverStandbyUnit(selectedTicket.id, eq.id)}
-                                          className="px-2.5 py-1 rounded text-[10px] font-bold bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-sm transition-all"
-                                          title="Click when repaired unit is reinstalled and standby loaner device is brought back to office"
-                                        >
-                                          ✓ Mark Standby Recovered
-                                        </button>
-                                      </>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRecoverStandbyUnit(selectedTicket.id, eq.id)}
+                                        className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer"
+                                        title="Mark standby loaner recovered back to office"
+                                      >
+                                        ✓ Mark Standby Recovered
+                                      </button>
                                     ) : (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                        ✅ Standby Recovered to Locker {eq.tempDeviceRecoveryDate ? `(${eq.tempDeviceRecoveryDate})` : ''}
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                        ✅ Standby Recovered
                                       </span>
                                     )}
                                   </div>
                                 </div>
                               )}
 
-                              {/* WhatsApp Directive Link for this specific equipment */}
+                              {/* WhatsApp Directive Link */}
                               {selectedTicket.engineer1 && (
                                 <div className="pt-1 flex items-center justify-between text-[11px]">
                                   <span className="text-gray-400">
@@ -2917,43 +3062,34 @@ export default function AdminPage() {
                                     href={buildEquipmentWhatsAppUrl(selectedTicket, eq)}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 hover:underline"
-                                    title="Send equipment directive to engineer on WhatsApp"
+                                    className="font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 hover:underline"
                                   >
                                     <Send className="w-3 h-3" />
-                                    <span>Send WhatsApp Hardware Directive &rarr;</span>
+                                    <span>WhatsApp Directive &rarr;</span>
                                   </a>
                                 </div>
                               )}
                             </div>
-                          ))}
-                        </div>
-                      )}
+                          );
+                        })}
+                      </div>
+                    )}
                     </div>
 
                     {/* SECTION: COMPANY TOOLS ISSUED FOR THIS SITE */}
-                    <div className="p-4 rounded-xl border border-rose-200 bg-rose-50/30 space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-rose-200">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
-                            <Wrench className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-xs font-bold text-gray-900">
-                                Company Tools Issued for this Site
-                              </h4>
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300 font-bold">
-                                {tools.filter(t => 
-                                  t.linkedTicket === selectedTicket.ticketNo || 
-                                  t.linkedTicket === `TKT-${selectedTicket.id}`
-                                ).length} checked out
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-gray-500">
-                              Locker equipment assigned to lead technician for this project
-                            </p>
-                          </div>
+                    <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-xs space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-gray-100">
+                        <div className="flex items-center gap-2">
+                          <Wrench className="w-4 h-4 text-rose-600" />
+                          <h4 className="text-xs font-bold text-gray-900">
+                            Company Tools Checked Out
+                          </h4>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-bold">
+                            {tools.filter(t => 
+                              t.linkedTicket === selectedTicket.ticketNo || 
+                              t.linkedTicket === `TKT-${selectedTicket.id}`
+                            ).length}
+                          </span>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -2970,20 +3106,20 @@ export default function AdminPage() {
                               });
                               setIsTicketIssueToolModalOpen(true);
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                            <span>+ Issue Tool for this Site</span>
+                            <span>+ Issue Tool</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => setActiveNav('tools')}
-                            className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                            className="px-2 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
                             title="Open Company Tools Locker in full Hub"
                           >
-                            <span>Locker Hub</span>
-                            <ExternalLink className="w-3 h-3 text-rose-600" />
+                            <span>Locker</span>
+                            <ExternalLink className="w-3 h-3 text-gray-500" />
                           </button>
                         </div>
                       </div>
@@ -2996,11 +3132,8 @@ export default function AdminPage() {
                         );
                         if (ticketTools.length === 0) {
                           return (
-                            <div className="p-3.5 rounded-lg bg-white border border-dashed border-rose-200 text-center space-y-1">
-                              <p className="text-xs font-semibold text-gray-700">No company tools currently checked out for this ticket</p>
-                              <p className="text-[11px] text-gray-400">
-                                Click &quot;+ Issue Tool for this Site&quot; if the lead technician requires drills, fusion splicers, or CCTV testers from the office locker.
-                              </p>
+                            <div className="py-4 px-3 rounded-lg bg-gray-50 border border-gray-100 text-center text-xs text-gray-500">
+                              No company tools checked out for this ticket.
                             </div>
                           );
                         }
@@ -3013,10 +3146,10 @@ export default function AdminPage() {
                               return (
                                 <div 
                                   key={tool.id}
-                                  className="p-3 rounded-lg border border-gray-200 bg-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
+                                  className="p-3 rounded-xl border border-gray-200 bg-white shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs hover:border-gray-300 transition-colors"
                                 >
                                   <div className="flex items-start gap-2.5 min-w-0">
-                                    <span className="px-2 py-0.5 rounded bg-gray-100 border border-gray-300 font-mono font-bold text-gray-800 text-[11px] flex-shrink-0 mt-0.5">
+                                    <span className="px-2 py-0.5 rounded bg-gray-100 border border-gray-200 font-mono font-bold text-gray-800 text-[11px] flex-shrink-0 mt-0.5">
                                       {tool.assetTag}
                                     </span>
                                     <div className="min-w-0">
@@ -3024,9 +3157,7 @@ export default function AdminPage() {
                                         {tool.toolName}
                                       </div>
                                       <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5 flex-wrap">
-                                        <span className="font-medium text-rose-800 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
-                                          {tool.category}
-                                        </span>
+                                        <span className="text-gray-600">{tool.category}</span>
                                         <span>&bull;</span>
                                         <span>Custody: <strong>{tool.assignedEngineer}</strong></span>
                                         <span>&bull;</span>
@@ -3037,22 +3168,22 @@ export default function AdminPage() {
 
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     {isReturned ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                        ✅ Returned to Locker {tool.returnDate ? `(${tool.returnDate})` : ''}
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                        ✅ Returned {tool.returnDate ? `(${tool.returnDate})` : ''}
                                       </span>
                                     ) : (
                                       <>
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                           isOverdue 
-                                            ? 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
-                                            : 'bg-blue-100 text-blue-800 border border-blue-300'
+                                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                            : 'bg-blue-50 text-blue-700 border border-blue-200'
                                         }`}>
                                           {isOverdue ? '⚠️ Overdue' : '📦 Checked Out'}
                                         </span>
                                         <button
                                           type="button"
                                           onClick={() => handleReturnToolFromTicket(tool.id)}
-                                          className="px-2.5 py-1 rounded text-[10px] font-bold bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-sm transition-all cursor-pointer"
+                                          className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer"
                                           title="Mark tool returned to office locker"
                                         >
                                           ✓ Mark Returned
@@ -3664,19 +3795,32 @@ export default function AdminPage() {
 
                 <div>
                   <label className="text-gray-700 font-bold block mb-1">
-                    Office Handling Status *
+                    Target Reinstall Due Date (5-Day Alert) *
                   </label>
-                  <select
-                    value={equipmentForm.officeStatus}
-                    onChange={e => setEquipmentForm({ ...equipmentForm, officeStatus: e.target.value as any })}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
-                  >
-                    <option value="sitting_in_office">🔴 Sitting in Office (Backlog / Needs Action)</option>
-                    <option value="at_service_center">🟡 Sent to Service Center / Vendor RMA</option>
-                    <option value="ready_for_reinstall">🟢 Repaired / Replacement Arrived (Ready for Site)</option>
-                    <option value="reinstalled">✅ Reinstalled at Site (Closed)</option>
-                  </select>
+                  <input
+                    type="date"
+                    required
+                    value={equipmentForm.expectedReinstallDate}
+                    onChange={e => setEquipmentForm({ ...equipmentForm, expectedReinstallDate: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label className="text-gray-700 font-bold block mb-1">
+                  Office Handling Status *
+                </label>
+                <select
+                  value={equipmentForm.officeStatus}
+                  onChange={e => setEquipmentForm({ ...equipmentForm, officeStatus: e.target.value as any })}
+                  className="w-full border border-gray-300 rounded-lg p-2 text-xs text-gray-900 font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+                >
+                  <option value="sitting_in_office">🔴 Sitting in Office (Backlog / Needs Action)</option>
+                  <option value="at_service_center">🟡 Sent to Service Center / Vendor RMA</option>
+                  <option value="ready_for_reinstall">🟢 Repaired / Replacement Arrived (Ready for Site)</option>
+                  <option value="reinstalled">✅ Reinstalled at Site (Closed)</option>
+                </select>
               </div>
 
               {/* Service Center Ref & Notes */}
@@ -3956,6 +4100,387 @@ export default function AdminPage() {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 5: ADMIN NOTIFICATION & DUE ALERTS CENTER          */}
+      {/* ======================================================== */}
+      {isNotificationCenterOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[90vh] flex flex-col font-sans">
+            
+            {/* Modal Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-[#160826] to-[#2a0e4a] text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
+                  <Bell className="w-5 h-5 text-rose-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white flex items-center gap-2">
+                    <span>Due Alerts & Notification Center</span>
+                    {totalAlertsCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-rose-600 text-white">
+                        {totalAlertsCount} Active
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-rose-200">
+                    5-Day reinstallation reminders, tool returns, and active site standbys
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNotificationCenterOpen(false)}
+                className="p-1 rounded-lg text-rose-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setNotificationCenterTab('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  notificationCenterTab === 'all'
+                    ? 'bg-white text-gray-900 shadow-xs border border-gray-200'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <span>All Alerts</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-gray-200 text-gray-800">
+                  {totalAlertsCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setNotificationCenterTab('reinstall')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  notificationCenterTab === 'reinstall'
+                    ? 'bg-white text-amber-800 shadow-xs border border-amber-200'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                <span>Reinstallation Due (5d)</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-100 text-amber-800">
+                  {reinstallAlerts.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setNotificationCenterTab('tools')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  notificationCenterTab === 'tools'
+                    ? 'bg-white text-rose-800 shadow-xs border border-rose-200'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Wrench className="w-3.5 h-3.5 text-rose-600" />
+                <span>Tool Returns Due</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-100 text-rose-800">
+                  {toolAlerts.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setNotificationCenterTab('standby')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  notificationCenterTab === 'standby'
+                    ? 'bg-white text-purple-800 shadow-xs border border-purple-200'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <HardDrive className="w-3.5 h-3.5 text-purple-600" />
+                <span>Standby on Site</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-purple-100 text-purple-800">
+                  {standbyAlerts.length}
+                </span>
+              </button>
+            </div>
+
+            {/* List Body */}
+            <div className="p-5 overflow-y-auto space-y-4 max-h-[60vh]">
+              {totalAlertsCount === 0 ? (
+                <div className="p-8 text-center space-y-2">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+                  <h4 className="font-bold text-gray-800 text-sm">All Operational Deadlines Cleared!</h4>
+                  <p className="text-xs text-gray-500">
+                    No hardware due for reinstallation within 5 days, no overdue company tools, and no unrecovered standby loaners.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Category 1: Reinstall Due Alerts */}
+                  {(notificationCenterTab === 'all' || notificationCenterTab === 'reinstall') && reinstallAlerts.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700">
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Site Equipment Reinstallation Reminders (5-Day Threshold)</span>
+                        <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 font-mono text-[10px]">
+                          {reinstallAlerts.length}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {reinstallAlerts.map(({ eq, ticket, dueInfo }) => {
+                          const assignedTech = eq.engineer1 || ticket.engineer1 || 'Assigned Technician';
+                          return (
+                            <div 
+                              key={`alert-reinstall-${eq.id}`}
+                              className={`p-3.5 rounded-xl border bg-white shadow-xs space-y-2.5 ${
+                                dueInfo.isOverdue ? 'border-rose-300' : 'border-amber-300'
+                              }`}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    dueInfo.isOverdue ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                                  }`}>
+                                    {dueInfo.isOverdue ? `🚨 Overdue by ${Math.abs(dueInfo.daysLeft)}d` : `⚠️ Due in ${dueInfo.daysLeft}d`}
+                                  </span>
+                                  <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                    {ticket.ticketNo || `TKT-${ticket.id}`}
+                                  </span>
+                                  <span className="text-xs font-bold text-gray-900">{ticket.clientName}</span>
+                                </div>
+
+                                <span className="text-xs font-mono font-semibold text-gray-600">
+                                  Target: <strong className="text-gray-900">{dueInfo.dueDateStr}</strong>
+                                </span>
+                              </div>
+
+                              <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-xs grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                  <span className="text-[10px] text-gray-400 font-bold uppercase block">Hardware Item</span>
+                                  <div className="font-bold text-gray-800">{eq.equipmentName}</div>
+                                  {eq.serialNumber && <div className="font-mono text-[11px] text-gray-500">S/N: {eq.serialNumber}</div>}
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-gray-400 font-bold uppercase block">Assigned Engineer</span>
+                                  <div className="font-semibold text-gray-800">{assignedTech}</div>
+                                  <div className="font-mono text-[11px] text-emerald-700">+91 {getEngineerPhone(assignedTech)}</div>
+                                </div>
+                              </div>
+
+                              {eq.hasTemporaryDevice && eq.tempDeviceRecoveryStatus === 'deployed' && (
+                                <div className="p-2 rounded-lg bg-purple-50 border border-purple-200 text-xs flex items-center justify-between gap-2 text-purple-900">
+                                  <span>⚠️ Active Standby Loaner on site: <strong>{eq.tempDeviceName || 'Loaner Unit'}</strong></span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickRecoverStandby(ticket.id, eq.id)}
+                                    className="px-2 py-0.5 rounded bg-purple-700 text-white font-bold text-[10px] hover:bg-purple-800 transition-colors"
+                                  >
+                                    Mark Standby Recovered
+                                  </button>
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedTicketId(ticket.id);
+                                    setActiveNav('inbox');
+                                    setViewMode('inbox');
+                                    setIsNotificationCenterOpen(false);
+                                  }}
+                                  className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1"
+                                >
+                                  <span>Open Ticket in Inbox</span>
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickMarkReinstalled(ticket.id, eq.id)}
+                                    className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all cursor-pointer"
+                                  >
+                                    ✓ Mark Reinstalled
+                                  </button>
+
+                                  <a
+                                    href={buildReinstallAlertWhatsAppUrl(eq, ticket)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-all"
+                                  >
+                                    <Send className="w-3 h-3" />
+                                    <span>WhatsApp Tech</span>
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Category 2: Tool Return Alerts */}
+                  {(notificationCenterTab === 'all' || notificationCenterTab === 'tools') && toolAlerts.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-700">
+                        <Wrench className="w-3.5 h-3.5" />
+                        <span>Company Tools Locker Return Reminders</span>
+                        <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 font-mono text-[10px]">
+                          {toolAlerts.length}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {toolAlerts.map(({ tool, dueInfo }) => (
+                          <div 
+                            key={`alert-tool-${tool.id}`}
+                            className={`p-3.5 rounded-xl border bg-white shadow-xs space-y-2.5 ${
+                              dueInfo.isOverdue ? 'border-rose-300' : 'border-amber-300'
+                            }`}
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  dueInfo.isOverdue ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {dueInfo.isOverdue ? `🚨 Overdue by ${Math.abs(dueInfo.daysLeft)}d` : `⚠️ Due in ${dueInfo.daysLeft}d`}
+                                </span>
+                                <span className="font-mono text-xs font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                  {tool.assetTag}
+                                </span>
+                                <span className="text-xs font-bold text-gray-900">{tool.toolName}</span>
+                              </div>
+
+                              <span className="text-xs font-mono font-semibold text-gray-600">
+                                Return Due: <strong className="text-gray-900">{tool.expectedReturnDate}</strong>
+                              </span>
+                            </div>
+
+                            <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-xs flex items-center justify-between gap-2">
+                              <div>
+                                <span className="text-[10px] text-gray-400 font-bold uppercase block">Assigned Engineer</span>
+                                <div className="font-bold text-gray-800">{tool.assignedEngineer}</div>
+                                <div className="font-mono text-[11px] text-emerald-700">+91 {getEngineerPhone(tool.assignedEngineer)}</div>
+                              </div>
+                              {tool.linkedTicket && (
+                                <div className="text-right">
+                                  <span className="text-[10px] text-gray-400 font-bold uppercase block">Linked Ticket</span>
+                                  <span className="font-mono text-xs text-blue-700 font-bold">{tool.linkedTicket}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-100">
+                              <button
+                                type="button"
+                                onClick={() => handleQuickMarkReturned(tool.id)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all cursor-pointer"
+                              >
+                                ✓ Mark Returned
+                              </button>
+
+                              <a
+                                href={buildToolAlertWhatsAppUrl(tool)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-all"
+                              >
+                                <Send className="w-3 h-3" />
+                                <span>WhatsApp Reminder</span>
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Category 3: Active Standby Units on Site */}
+                  {(notificationCenterTab === 'all' || notificationCenterTab === 'standby') && standbyAlerts.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-purple-700">
+                        <HardDrive className="w-3.5 h-3.5" />
+                        <span>Active Temporary Standby Units Deployed on Site</span>
+                        <span className="px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-800 font-mono text-[10px]">
+                          {standbyAlerts.length}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {standbyAlerts.map(({ eq, ticket }) => {
+                          const assignedTech = eq.engineer1 || ticket.engineer1 || 'Lead Tech';
+                          return (
+                            <div 
+                              key={`alert-standby-${eq.id}`}
+                              className="p-3.5 rounded-xl border border-purple-200 bg-white shadow-xs space-y-2.5"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
+                                    Standby Deployed
+                                  </span>
+                                  <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                    {ticket.ticketNo || `TKT-${ticket.id}`}
+                                  </span>
+                                  <span className="text-xs font-bold text-gray-900">{ticket.clientName}</span>
+                                </div>
+
+                                <span className="text-xs text-gray-500">
+                                  Deployed: <strong className="text-gray-800 font-mono">{eq.tempDeviceDeployedDate || 'Recent'}</strong>
+                                </span>
+                              </div>
+
+                              <div className="p-2.5 rounded-lg bg-purple-50/50 border border-purple-100 text-xs grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                  <span className="text-[10px] text-purple-700 font-bold uppercase block">Standby Loaner Unit</span>
+                                  <div className="font-bold text-gray-900">{eq.tempDeviceName || 'Loaner Device'}</div>
+                                  {eq.tempDeviceSerial && <div className="font-mono text-[11px] text-gray-600">S/N: {eq.tempDeviceSerial}</div>}
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-purple-700 font-bold uppercase block">Customer Device In Bench</span>
+                                  <div className="font-semibold text-gray-800">{eq.equipmentName}</div>
+                                  <div className="text-[11px] text-gray-500">Status: {eq.officeStatus.replace(/_/g, ' ')}</div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-100">
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickRecoverStandby(ticket.id, eq.id)}
+                                  className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-all cursor-pointer"
+                                >
+                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                  <span>Mark Standby Recovered to Office</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-xs text-gray-500">
+              <span>Automatic 5-day pre-due notification calculation active.</span>
+              <button
+                type="button"
+                onClick={() => setIsNotificationCenterOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
           </div>
         </div>
       )}
